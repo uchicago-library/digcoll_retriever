@@ -1,0 +1,10 @@
+language: python
+python:
+    - "3.5"
+before_script:
+    - pip install coverage && pip install python-coveralls
+install: "pip install ."
+script: coverage run --source digcollretriever tests.py && coverage report
+# Working on coveralls support for organization repositories
+#after_success:
+#    - coveralls
