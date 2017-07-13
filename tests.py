@@ -52,7 +52,7 @@ class DigCollRetrieverTests(unittest.TestCase):
 
     def testGetMetadata(self):
         rv = self.response_200(
-            self.app.get("/{}/md".format(quote("mvol/0001/0001/0001")))
+            self.app.get("/{}/metadata".format(quote("mvol/0001/0001/0001")))
         )
 
     def testGetOCR(self):
@@ -62,7 +62,7 @@ class DigCollRetrieverTests(unittest.TestCase):
 
     def testGetJejOCR(self):
         rv = self.response_200(
-            self.app.get("/{}/jejocr".format(quote("mvol/0001/0001/0001")))
+            self.app.get("/{}/ocr/jej".format(quote("mvol/0001/0001/0001")))
         )
 
     def testGetPDF(self):
