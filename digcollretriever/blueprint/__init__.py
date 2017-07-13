@@ -1,7 +1,9 @@
 import logging
+from urllib.parse import unquote
 
 from flask import Blueprint, jsonify
 from flask_restful import Resource, Api
+from werkzeug.utils import secure_filename
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
@@ -23,7 +25,7 @@ class Error(Exception):
 
     def to_dict(self):
         return {"message": self.message,
-                "error_name": self.error_name}
+                "error_name": self.err_name}
 
 
 @BLUEPRINT.errorhandler(Error)
@@ -36,6 +38,46 @@ def handle_errors(error):
 class Root(Resource):
     def get(self):
         return {"It worked!": None}
+
+
+class GetTif(Resource):
+    def get(self, identifier):
+        return {"GetTif": unquote(identifier)}
+
+
+class GetTifStats(Resource):
+    def get(self, identifier):
+        return {"GetTifStats": unquote(identifier)}
+
+
+class GetJpg(Resource):
+    def get(self, identifier):
+        return {"GetJpg": unquote(identifier)}
+
+
+class GetJpgStats(Resource):
+    def get(self, identifier):
+        return {"GetJpgStats": unquote(identifier)}
+
+
+class GetOcr(Resource):
+    def get(self, identifier):
+        return {"GetOcr": unquote(identifier)}
+
+
+class GetJejOcr(Resource):
+    def get(self, identifier):
+        return {"GetJejOcr": unquote(identifier)}
+
+
+class GetPdf(Resource):
+    def get(self, identifier):
+        return {"GetPDF": unquote(identifier)}
+
+
+class GetMetadata(Resource):
+    def get(self, identifier):
+        return {"GetMetadata": unquote(identifier)}
 
 
 @BLUEPRINT.record
@@ -52,3 +94,11 @@ def handle_configs(setup_state):
 
 
 API.add_resource(Root, "/")
+API.add_resource(GetTif, "/<path:identifier>/tif")
+API.add_resource(GetTifStats, "/<path:identifier>/tif/stats")
+API.add_resource(GetJpg, "/<path:identifier>/jpg")
+API.add_resource(GetJpgStats, "/<path:identifier>/jpg/stats")
+API.add_resource(GetOcr, "/<path:identifier>/ocr")
+API.add_resource(GetJejOcr, "/<path:identifier>/jejocr")
+API.add_resource(GetPdf, "/<path:identifier>/pdf")
+API.add_resource(GetMetadata, "/<path:identifier>/md")
