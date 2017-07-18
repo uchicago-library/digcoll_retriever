@@ -13,11 +13,23 @@ techmd_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
     "properties": {
-        "width": {"type": "string",
-                  "pattern": "^[0-9]+$"},
-        "height":  {"type": "string",
-                    "pattern": "^[0-9]+$"}
+        "width": {"type": "integer"},
+        "height":  {"type": "integer"}
     },
+}
+
+# TODO: Regex for relative URL string validation in the items pattern
+stat_schema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "identifier": {"type": "string",
+                       "pattern": "^.+$"},
+        "contexts_available": {"type": "array",
+                               "items": {"type": "string",
+                                         "pattern": "^.*$"},
+                               "minItems": 0}
+    }
 }
 
 
@@ -46,26 +58,29 @@ class DigCollRetrieverTests(unittest.TestCase):
         rj = self.response_200_json(
             self.app.get("/{}/stat".format(quote("mvol/0001/0001/0001")))
         )
+        jsonschema.validate(rj, stat_schema)
 
     def testGetJpg(self):
         rv = self.response_200(
             self.app.get("/{}/jpg".format(quote("mvol/0001/0001/0001")))
         )
 
-    def testGetJpgStats(self):
-        rv = self.response_200(
+    def testGetJpgTechnicalMetadata(self):
+        rj = self.response_200_json(
             self.app.get("/{}/jpg/technical_metadata".format(quote("mvol/0001/0001/0001")))
         )
+        jsonschema.validate(rj, techmd_schema)
 
     def testGetTif(self):
         rv = self.response_200(
             self.app.get("/{}/tif".format(quote("mvol/0001/0001/0001")))
         )
 
-    def testGetTifStats(self):
-        rv = self.response_200(
+    def testGetTifTechnicalMetadata(self):
+        rj = self.response_200_json(
             self.app.get("/{}/tif/technical_metadata".format(quote("mvol/0001/0001/0001")))
         )
+        jsonschema.validate(rj, techmd_schema)
 
     def testGetMetadata(self):
         rv = self.response_200(

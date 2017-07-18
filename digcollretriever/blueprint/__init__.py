@@ -1,9 +1,11 @@
 import logging
 from urllib.parse import unquote
+from io import BytesIO
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api
-from werkzeug.utils import secure_filename
+
+from PIL import Image
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
@@ -35,6 +37,28 @@ def handle_errors(error):
     return response
 
 
+def get_tif_dimensions(identifier):
+    return 0, 0
+
+
+def get_jpg_dimensions(identifier):
+    return 0, 0
+
+
+def get_tif(identifier):
+    return b"not a tif"
+
+
+def tif_to_jpg(identifier, width, height):
+#    # There's also Image.open(), depending on if we go with byte streams or paths
+#    tif = Image.frombytes(mode, size, (get_tif(identifier)))
+#    mem_jpg = BytesIO()
+#    tif.save(mem_jpg, format="jpg")
+#    mem_jpg.seek(0)
+#    return mem_jpg
+    return b"not a jpg"
+
+
 class Root(Resource):
     def get(self):
         return {"It worked!": None}
@@ -42,53 +66,58 @@ class Root(Resource):
 
 class Stat(Resource):
     def get(self, identifier):
-        return {"Stat": unquote(identifier)}
+        return {"identifier": unquote(identifier),
+                "contexts_available": []}
 
 
 class GetTif(Resource):
     def get(self, identifier):
-        return {"GetTif": unquote(identifier)}
+        return send_file(b"this isn't really a tif", mimetype="image/tif")
 
 
 class GetTifTechnicalMetadata(Resource):
     def get(self, identifier):
-        return {"GetTifTechnicalMetadata": unquote(identifier)}
+        width, height = get_tif_dimensions(unquote(identifier))
+        return {"width": width,
+                "height": height}
 
 
 class GetJpg(Resource):
-    # Handle paramters on this endpoint for jpg size
+    # TODO: Handle paramters on this endpoint for jpg size
     def get(self, identifier):
-        return {"GetJpg": unquote(identifier)}
+        return send_file(tif_to_jpg(identifier, 100, 100), mimetype="image/jpg")
 
 
 class GetJpgTechnicalMetadata(Resource):
     def get(self, identifier):
-        return {"GetJpgTechnicalMetadata": unquote(identifier)}
+        width, height = get_jpg_dimensions(unquote(identifier))
+        return {"width": width,
+                "height": height}
 
 
 class GetOcr(Resource):
     def get(self, identifier):
-        return {"GetOcr": unquote(identifier)}
+        return send_file(b"this is an OCR file", mimetype="text")
 
 
 class GetJejOcr(Resource):
     def get(self, identifier):
-        return {"GetJejOcr": unquote(identifier)}
+        return send_file(b"this is a jej OCR file", mimetype="text")
 
 
 class GetPosOcr(Resource):
     def get(self, identifier):
-        return {"GetPosOcr" :unquote(identifier)}
+        return send_file(b"this is a pos OCR file", mimetype="text")
 
 
 class GetPdf(Resource):
     def get(self, identifier):
-        return {"GetPDF": unquote(identifier)}
+        return send_file(b"this isn't really a pdf", mimetype="application/pdf")
 
 
 class GetMetadata(Resource):
     def get(self, identifier):
-        return {"GetMetadata": unquote(identifier)}
+        return send_file(b"this is a metadata stand in file", mimetype="text")
 
 
 @BLUEPRINT.record
