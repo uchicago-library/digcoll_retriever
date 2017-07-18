@@ -40,24 +40,30 @@ class Root(Resource):
         return {"It worked!": None}
 
 
+class Stat(Resource):
+    def get(self, identifier):
+        return {"Stat": unquote(identifier)}
+
+
 class GetTif(Resource):
     def get(self, identifier):
         return {"GetTif": unquote(identifier)}
 
 
-class GetTifStats(Resource):
+class GetTifTechnicalMetadata(Resource):
     def get(self, identifier):
-        return {"GetTifStats": unquote(identifier)}
+        return {"GetTifTechnicalMetadata": unquote(identifier)}
 
 
 class GetJpg(Resource):
+    # Handle paramters on this endpoint for jpg size
     def get(self, identifier):
         return {"GetJpg": unquote(identifier)}
 
 
-class GetJpgStats(Resource):
+class GetJpgTechnicalMetadata(Resource):
     def get(self, identifier):
-        return {"GetJpgStats": unquote(identifier)}
+        return {"GetJpgTechnicalMetadata": unquote(identifier)}
 
 
 class GetOcr(Resource):
@@ -68,6 +74,11 @@ class GetOcr(Resource):
 class GetJejOcr(Resource):
     def get(self, identifier):
         return {"GetJejOcr": unquote(identifier)}
+
+
+class GetPosOcr(Resource):
+    def get(self, identifier):
+        return {"GetPosOcr" :unquote(identifier)}
 
 
 class GetPdf(Resource):
@@ -94,11 +105,13 @@ def handle_configs(setup_state):
 
 
 API.add_resource(Root, "/")
+API.add_resource(Stat, "/<path:identifier>/stat")
 API.add_resource(GetTif, "/<path:identifier>/tif")
-API.add_resource(GetTifStats, "/<path:identifier>/tif/stats")
+API.add_resource(GetTifTechnicalMetadata, "/<path:identifier>/tif/technical_metadata")
 API.add_resource(GetJpg, "/<path:identifier>/jpg")
-API.add_resource(GetJpgStats, "/<path:identifier>/jpg/stats")
+API.add_resource(GetJpgTechnicalMetadata, "/<path:identifier>/jpg/technical_metadata")
 API.add_resource(GetOcr, "/<path:identifier>/ocr")
 API.add_resource(GetJejOcr, "/<path:identifier>/ocr/jej")
+API.add_resource(GetPosOcr, "/<path:identifier>/ocr/pos")
 API.add_resource(GetPdf, "/<path:identifier>/pdf")
 API.add_resource(GetMetadata, "/<path:identifier>/metadata")
