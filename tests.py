@@ -9,6 +9,8 @@ import jsonschema
 environ['DIGCOLL_RETRIEVER_DEFER_CONFIG'] = "True"
 import digcollretriever
 
+
+# For more info: http://json-schema.org/
 techmd_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",

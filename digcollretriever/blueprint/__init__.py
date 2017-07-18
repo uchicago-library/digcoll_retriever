@@ -30,12 +30,39 @@ class Error(Exception):
                 "error_name": self.err_name}
 
 
+class UnknownIdentifierFormatError(Error):
+    err_name = "UnknownIdentifierFormatError"
+
+
 @BLUEPRINT.errorhandler(Error)
 def handle_errors(error):
     response = jsonify(error.to_dict())
     response.status_code = error.status_code
     return response
 
+
+### When not as lazy probably move all the following to lib
+
+# Abstraction class for use with different kinds of identifiers, maybe?
+# Futher consideration on this tomorrow, I imagine
+class StorageInterface:
+    def get_tif(self, identifier):
+        pass
+
+    def get_pdf(self, identifier):
+        pass
+
+    def get_jpg(self, identifier):
+        pass
+
+    def get_limb_ocr(self, identifier):
+        pass
+
+    def get_jej_ocr(self, identifier):
+        pass
+
+    def get_pos_ocr(self, identifier):
+        pass
 
 def get_tif_dimensions(identifier):
     return 0, 0
@@ -50,13 +77,36 @@ def get_tif(identifier):
 
 
 def tif_to_jpg(identifier, width, height):
+    return b"not a jpg"
 #    # There's also Image.open(), depending on if we go with byte streams or paths
 #    tif = Image.frombytes(mode, size, (get_tif(identifier)))
 #    mem_jpg = BytesIO()
 #    tif.save(mem_jpg, format="jpg")
 #    mem_jpg.seek(0)
 #    return mem_jpg
-    return b"not a jpg"
+
+
+def is_mvol_identifier(identifier):
+    return True if "mvol" in identifier else False
+
+
+def dummy_id_check(identifier):
+    return True
+
+
+def determine_identifier_type(identifier):
+    id_types = {
+        "mvol": is_mvol_identifier,
+        "other": dummy_id_check
+    }
+
+    for x in id_types:
+        if id_types[x](identifier):
+            return x
+    raise UnknownIdentifierFormatError(identifier)
+
+
+### End stuff that should be moved to lib
 
 
 class Root(Resource):
