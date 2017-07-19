@@ -3,6 +3,7 @@ from urllib.parse import unquote
 from io import BytesIO
 import re
 from os.path import join
+from math import floor
 
 from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api, reqparse
@@ -170,11 +171,14 @@ class MvolLayer4StorageInterface(StorageInterface):
         width, height = tif.size
         return {"width": width, "height": height}
 
-    def get_jpg(self, identifier, width=None, height=None):
+    def get_jpg(self, identifier, width=None, height=None, scale=None):
         # Dynamically generate the jpg from the tif
         tif = Image.open(self.get_tif(identifier))
         if width and height:
             tif = tif.resize((width, height))
+        elif scale:
+            o_width, o_height = tif.size
+            tif = tif.resize((floor(o_width * scale), floor(o_height * scale)))
         outfile = BytesIO()
         tif.save(outfile, "JPEG", quality=100)
         outfile.seek(0)
@@ -270,11 +274,15 @@ class GetJpg(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('width', type=int, location='args')
         parser.add_argument('height', type=int, location='args')
+        parser.add_argument('scale', type=float, location='args')
         args = parser.parse_args()
+        if (args['scale'] and args['width']) or (args['scale'] and args['height']):
+            raise Error()
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
         return send_file(
-            storage_instance.get_jpg(unquote(identifier), width=args['width'], height=args['height']),
+            storage_instance.get_jpg(unquote(identifier), width=args['width'], height=args['height'],
+                                     scale=args['scale']),
             mimetype="image/jpg"
         )
 
