@@ -340,7 +340,7 @@ class GetMetadata(Resource):
         storage_instance = storage_kls(BLUEPRINT.config)
         return send_file(
             storage_instance.get_descriptive_metadata(unquote(identifier)),
-            mimetype="text"
+            mimetype="text/xml"
         )
 
 
