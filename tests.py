@@ -89,7 +89,7 @@ class DigCollRetrieverTests(unittest.TestCase):
             self.app.get("/{}/metadata".format(quote("mvol/0001/0001/0001")))
         )
 
-    def testGetOCR(self):
+    def testGetLimbOCR(self):
         rv = self.response_200(
             self.app.get("/{}/ocr".format(quote("mvol/0001/0001/0001")))
         )

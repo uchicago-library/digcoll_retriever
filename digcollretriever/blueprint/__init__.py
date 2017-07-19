@@ -34,6 +34,10 @@ class UnknownIdentifierFormatError(Error):
     err_name = "UnknownIdentifierFormatError"
 
 
+class UnsupportedContextError(Error):
+    err_name = "UnsupportedContextError"
+
+
 @BLUEPRINT.errorhandler(Error)
 def handle_errors(error):
     response = jsonify(error.to_dict())
@@ -41,18 +45,99 @@ def handle_errors(error):
     return response
 
 
-### When not as lazy probably move all the following to lib
+# When not as lazy probably move all the following to lib
 
 # Abstraction class for use with different kinds of identifiers, maybe?
 # Futher consideration on this tomorrow, I imagine
 class StorageInterface:
+    @classmethod
+    def claim_identifier(cls, identifier):
+        return False
+
+    def __init__(self, conf):
+        pass
+
     def get_tif(self, identifier):
+        raise NotImplementedError()
+
+    def get_tif_techmd(self, identifier):
+        raise NotImplementedError()
+
+    def get_pdf(self, identifier):
+        raise NotImplementedError()
+
+    def get_jpg(self, identifier, width=600, height=480):
+        raise NotImplementedError()
+
+    def get_jpg_techmd(self, identifier):
+        raise NotImplementedError()
+
+    def get_limb_ocr(self, identifier):
+        raise NotImplementedError()
+
+    def get_jej_ocr(self, identifier):
+        raise NotImplementedError()
+
+    def get_pos_ocr(self, identifier):
+        raise NotImplementedError()
+
+    def get_descriptive_metadata(self, identifier):
+        raise NotImplementedError()
+
+
+class MvolLayer1StorageInterface(StorageInterface):
+    @classmethod
+    def claim_identifier(cls, identifier):
+        # TODO
+        pass
+
+    def __init__(self, conf):
+        pass
+
+class MvolLayer2StorageInterface(StorageInterface):
+    @classmethod
+    def claim_identifier(cls, identifier):
+        # TODO
+        pass
+
+    def __init__(self, conf):
+        pass
+
+class MvolLayer3StorageInterface:
+    @classmethod
+    def claim_identifier(cls, identifier):
+        # TODO
+        pass
+
+    def __init__(self, conf):
         pass
 
     def get_pdf(self, identifier):
         pass
 
-    def get_jpg(self, identifier):
+    def get_descriptive_metadata(self, identifier):
+        pass
+
+
+class MvolLayer4StorageInterface:
+    @classmethod
+    def claim_identifier(cls, identifier):
+        # TODO
+        pass
+
+    def __init__(self, conf):
+        pass
+
+    def get_tif(self, identifier):
+        pass
+
+    def get_tif_techmd(self, identifier):
+        pass
+
+    def get_jpg(self, identifier, width=600, height=480):
+        pass
+
+    def get_jpg_techmd(self, identifier):
         pass
 
     def get_limb_ocr(self, identifier):
@@ -64,110 +149,139 @@ class StorageInterface:
     def get_pos_ocr(self, identifier):
         pass
 
-def get_tif_dimensions(identifier):
-    return 0, 0
-
-
-def get_jpg_dimensions(identifier):
-    return 0, 0
-
-
-def get_tif(identifier):
-    return b"not a tif"
-
-
-def tif_to_jpg(identifier, width, height):
-    return b"not a jpg"
-#    # There's also Image.open(), depending on if we go with byte streams or paths
-#    tif = Image.frombytes(mode, size, (get_tif(identifier)))
-#    mem_jpg = BytesIO()
-#    tif.save(mem_jpg, format="jpg")
-#    mem_jpg.seek(0)
-#    return mem_jpg
-
-
-def is_mvol_identifier(identifier):
-    return True if "mvol" in identifier else False
-
-
-def dummy_id_check(identifier):
-    return True
-
 
 def determine_identifier_type(identifier):
-    id_types = {
-        "mvol": is_mvol_identifier,
-        "other": dummy_id_check
-    }
+    id_types = [
+        MvolLayer1StorageInterface,
+        MvolLayer2StorageInterface,
+        MvolLayer3StorageInterface,
+        MvolLayer4StorageInterface
+    ]
 
     for x in id_types:
-        if id_types[x](identifier):
+        if x.claim_identifier(identifier):
             return x
     raise UnknownIdentifierFormatError(identifier)
 
 
-### End stuff that should be moved to lib
+def statter(storageKls, identifier):
+    contexts = []
+    if storageKls.get_tif != StorageInterface.get_tif:
+        contexts.append(BLUEPRINT.url_for(GetTif, identifier=identifier))
+    if storageKls.get_tif_techmd != StorageInterface.get_tif_techmd:
+        contexts.append(BLUEPRINT.url_for(GetTifTechnicalMetadata, identifier=identifier))
+    if storageKls.get_pdf != StorageInterface.get_pdf:
+        contexts.append(BLUEPRINT.url_for(GetPdf, identifier=identifier))
+    if storageKls.get_jpg != StorageInterface.get_jpg:
+        contexts.append(BLUEPRINT.url_for(GetJpg, identifier=identifier))
+    if storageKls.get_jpg_techmd != StorageInterface.get_jpg_techmd:
+        contexts.append(BLUEPRINT.url_for(GetJpgTechnicalMetadata, identifier=identifier))
+    if storageKls.get_limb_ocr != StorageInterface.get_limb_ocr:
+        contexts.append(BLUEPRINT.url_for(GetLimbOcr, identifier=identifier))
+    if storageKls.get_jej_ocr != StorageInterface.get_jej_ocr:
+        contexts.append(BLUEPRINT.url_for(GetJejOcr, identifier=identifier))
+    if storageKls.get_pos_ocr != StorageInterface.get_pos_ocr:
+        contexts.append(BLUEPRINT.url_for(GetPosOcr, identifier=identifier))
+    return contexts
+
+
+# End stuff that should be moved to lib
 
 
 class Root(Resource):
     def get(self):
-        return {"It worked!": None}
+        return {"Status": "Not broken!"}
 
 
 class Stat(Resource):
     def get(self, identifier):
         return {"identifier": unquote(identifier),
-                "contexts_available": []}
+                "contexts_available": statter(determine_identifier_type(identifier))}
 
 
 class GetTif(Resource):
     def get(self, identifier):
-        return send_file(b"this isn't really a tif", mimetype="image/tif")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_tif(unquote(identifier)),
+            mimetype="image/tif"
+        )
 
 
 class GetTifTechnicalMetadata(Resource):
     def get(self, identifier):
-        width, height = get_tif_dimensions(unquote(identifier))
-        return {"width": width,
-                "height": height}
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return storage_instance.get_tif_techmd(unquote(identifier))
 
 
 class GetJpg(Resource):
     # TODO: Handle paramters on this endpoint for jpg size
     def get(self, identifier):
-        return send_file(tif_to_jpg(identifier, 100, 100), mimetype="image/jpg")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_jpg(unquote(identifier)),
+            mimetype="image/jpg"
+        )
 
 
 class GetJpgTechnicalMetadata(Resource):
     def get(self, identifier):
-        width, height = get_jpg_dimensions(unquote(identifier))
-        return {"width": width,
-                "height": height}
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return storage_instance.get_jpg_techmd(unquote(identifier))
 
 
-class GetOcr(Resource):
+class GetLimbOcr(Resource):
     def get(self, identifier):
-        return send_file(b"this is an OCR file", mimetype="text")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_limb_ocr(unquote(identifier)),
+            mimetype="text"
+        )
 
 
 class GetJejOcr(Resource):
     def get(self, identifier):
-        return send_file(b"this is a jej OCR file", mimetype="text")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_jej_ocr(unquote(identifier)),
+            mimetype="text"
+        )
 
 
 class GetPosOcr(Resource):
     def get(self, identifier):
-        return send_file(b"this is a pos OCR file", mimetype="text")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_pos_ocr(unquote(identifier)),
+            mimetype="text"
+        )
 
 
 class GetPdf(Resource):
     def get(self, identifier):
-        return send_file(b"this isn't really a pdf", mimetype="application/pdf")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_pdf(unquote(identifier)),
+            mimetype="application/pdf"
+        )
 
 
 class GetMetadata(Resource):
     def get(self, identifier):
-        return send_file(b"this is a metadata stand in file", mimetype="text")
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        return send_file(
+            storage_instance.get_descriptive_metadata(unquote(identifier)),
+            mimetype="text"
+        )
 
 
 @BLUEPRINT.record
@@ -189,7 +303,7 @@ API.add_resource(GetTif, "/<path:identifier>/tif")
 API.add_resource(GetTifTechnicalMetadata, "/<path:identifier>/tif/technical_metadata")
 API.add_resource(GetJpg, "/<path:identifier>/jpg")
 API.add_resource(GetJpgTechnicalMetadata, "/<path:identifier>/jpg/technical_metadata")
-API.add_resource(GetOcr, "/<path:identifier>/ocr")
+API.add_resource(GetLimbOcr, "/<path:identifier>/ocr/limb")
 API.add_resource(GetJejOcr, "/<path:identifier>/ocr/jej")
 API.add_resource(GetPosOcr, "/<path:identifier>/ocr/pos")
 API.add_resource(GetPdf, "/<path:identifier>/pdf")
