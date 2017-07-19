@@ -172,10 +172,14 @@ class MvolLayer4StorageInterface(StorageInterface):
     def get_jpg(self, identifier, width=None, height=None, scale=None):
         # Dynamically generate the jpg from the tif
         tif = Image.open(self.get_tif(identifier))
+        o_width, o_height = tif.size
         if width and height:
-            tif = tif.resize((width, height))
+            if (width > (5 * o_width)) or (height > (5* o_height)):
+                width = None
+                height = None
+            if width and height:
+                tif = tif.resize((width, height))
         elif scale:
-            o_width, o_height = tif.size
             tif = tif.resize((floor(o_width * scale), floor(o_height * scale)))
         outfile = BytesIO()
         tif.save(outfile, "JPEG", quality=95)
