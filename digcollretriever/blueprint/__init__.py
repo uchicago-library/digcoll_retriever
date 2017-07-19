@@ -279,10 +279,10 @@ class GetJpg(Resource):
         if (args['scale'] and args['width']) or (args['scale'] and args['height']):
             raise Error()
         if args['scale']:
-            if args['scale'] > 1:
-                args['scale'] = 1
+            if args['scale'] > 2:
+                args['scale'] = 2
             if args['scale'] < 0:
-                args['scale'] = 1
+                args['scale'] = .1
 
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
