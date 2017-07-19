@@ -1,6 +1,8 @@
 import logging
 from urllib.parse import unquote
 from io import BytesIO
+import re
+from os.path import join
 
 from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api
@@ -88,60 +90,103 @@ class StorageInterface:
 class MvolLayer1StorageInterface(StorageInterface):
     @classmethod
     def claim_identifier(cls, identifier):
-        # TODO
-        pass
+        if re.match("^mvol-[0-9]{4}$", identifier):
+            return True
 
     def __init__(self, conf):
         pass
+
 
 class MvolLayer2StorageInterface(StorageInterface):
     @classmethod
     def claim_identifier(cls, identifier):
-        # TODO
-        pass
+        if re.match("^mvol-[0-9]{4}-[0-9]{4}$", identifier):
+            return True
 
     def __init__(self, conf):
         pass
 
-class MvolLayer3StorageInterface:
+
+class MvolLayer3StorageInterface(StorageInterface):
     @classmethod
     def claim_identifier(cls, identifier):
-        # TODO
-        pass
+        if re.match("^mvol-[0-9]{4}-[0-9]{4}-[0-9]{4}$", identifier):
+            return True
 
     def __init__(self, conf):
-        pass
+        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
+        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
+        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
+
+    def build_dir_path(self, identifier):
+        return join(
+            self.MVOL_OWNCLOUD_ROOT,
+            "data",
+            self.MVOL_OWNCLOUD_USER,
+            "files",
+            self.MVOL_OWNCLOUD_SUBPATH,
+            "mvol",
+            identifier.split("-")[1],
+            identifier.split("-")[2],
+            identifier.split("-")[3]
+        )
 
     def get_pdf(self, identifier):
-        pass
+        return join(self.build_dir_path(identifier), identifier+".pdf")
 
     def get_descriptive_metadata(self, identifier):
-        pass
+        return join(self.build_dir_path(identifier), identifier+".dc.xml")
 
 
-class MvolLayer4StorageInterface:
+class MvolLayer4StorageInterface(StorageInterface):
     @classmethod
     def claim_identifier(cls, identifier):
-        # TODO
-        pass
+        if re.match("^mvol-[0-9]{4}-[0-9]{4}-[0-9]{4}_[0-9]{4}$", identifier):
+            return True
 
     def __init__(self, conf):
-        pass
+        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
+        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
+        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
+
+    def build_dir_path(self, identifier):
+        return join(
+            self.MVOL_OWNCLOUD_ROOT,
+            "data",
+            self.MVOL_OWNCLOUD_USER,
+            "files",
+            self.MVOL_OWNCLOUD_SUBPATH,
+            "mvol",
+            identifier.split("-")[1],
+            identifier.split("-")[2],
+            identifier.split("-")[3].split("_")[0]
+        )
 
     def get_tif(self, identifier):
-        pass
+        return join(self.build_dir_path(identifier), "TIFF", identifier+".tif")
 
     def get_tif_techmd(self, identifier):
-        pass
+        tif = Image.open(self.get_tif(identifier))
+        width, height = tif.size
+        return {"width": width, "height": height}
 
     def get_jpg(self, identifier, width=600, height=480):
-        pass
+        # Dynamically generate the jpg from the tif
+        tif = Image.open(self.get_tif(identifier))
+        outfile = BytesIO()
+        tif.save(outfile, "JPEG", quality=100)
+        outfile.seek(0)
+        return outfile
+        # Static output
+        #  return join(self.build_dir_path(identifier), "JPEG", identifier+".jpg")
 
     def get_jpg_techmd(self, identifier):
-        pass
+        jpg = Image.open(self.get_jpg(identifier))
+        width, height = jpg.size
+        return {"width": width, "height": height}
 
     def get_limb_ocr(self, identifier):
-        pass
+        return join(self.build_dir_path(identifier), "ALTO", identifier+".xml")
 
     def get_jej_ocr(self, identifier):
         pass
@@ -167,21 +212,21 @@ def determine_identifier_type(identifier):
 def statter(storageKls, identifier):
     contexts = []
     if storageKls.get_tif != StorageInterface.get_tif:
-        contexts.append(BLUEPRINT.url_for(GetTif, identifier=identifier))
+        contexts.append(API.url_for(GetTif, identifier=identifier))
     if storageKls.get_tif_techmd != StorageInterface.get_tif_techmd:
-        contexts.append(BLUEPRINT.url_for(GetTifTechnicalMetadata, identifier=identifier))
+        contexts.append(API.url_for(GetTifTechnicalMetadata, identifier=identifier))
     if storageKls.get_pdf != StorageInterface.get_pdf:
-        contexts.append(BLUEPRINT.url_for(GetPdf, identifier=identifier))
+        contexts.append(API.url_for(GetPdf, identifier=identifier))
     if storageKls.get_jpg != StorageInterface.get_jpg:
-        contexts.append(BLUEPRINT.url_for(GetJpg, identifier=identifier))
+        contexts.append(API.url_for(GetJpg, identifier=identifier))
     if storageKls.get_jpg_techmd != StorageInterface.get_jpg_techmd:
-        contexts.append(BLUEPRINT.url_for(GetJpgTechnicalMetadata, identifier=identifier))
+        contexts.append(API.url_for(GetJpgTechnicalMetadata, identifier=identifier))
     if storageKls.get_limb_ocr != StorageInterface.get_limb_ocr:
-        contexts.append(BLUEPRINT.url_for(GetLimbOcr, identifier=identifier))
+        contexts.append(API.url_for(GetLimbOcr, identifier=identifier))
     if storageKls.get_jej_ocr != StorageInterface.get_jej_ocr:
-        contexts.append(BLUEPRINT.url_for(GetJejOcr, identifier=identifier))
+        contexts.append(API.url_for(GetJejOcr, identifier=identifier))
     if storageKls.get_pos_ocr != StorageInterface.get_pos_ocr:
-        contexts.append(BLUEPRINT.url_for(GetPosOcr, identifier=identifier))
+        contexts.append(API.url_for(GetPosOcr, identifier=identifier))
     return contexts
 
 
@@ -196,7 +241,7 @@ class Root(Resource):
 class Stat(Resource):
     def get(self, identifier):
         return {"identifier": unquote(identifier),
-                "contexts_available": statter(determine_identifier_type(identifier))}
+                "contexts_available": statter(determine_identifier_type(identifier), identifier)}
 
 
 class GetTif(Resource):
