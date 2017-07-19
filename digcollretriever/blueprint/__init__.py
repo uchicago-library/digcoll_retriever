@@ -50,8 +50,6 @@ def handle_errors(error):
 
 # When not as lazy probably move all the following to lib
 
-# Abstraction class for use with different kinds of identifiers, maybe?
-# Futher consideration on this tomorrow, I imagine
 class StorageInterface:
     @classmethod
     def claim_identifier(cls, identifier):
@@ -180,11 +178,11 @@ class MvolLayer4StorageInterface(StorageInterface):
             o_width, o_height = tif.size
             tif = tif.resize((floor(o_width * scale), floor(o_height * scale)))
         outfile = BytesIO()
-        tif.save(outfile, "JPEG", quality=100)
+        tif.save(outfile, "JPEG", quality=95)
         outfile.seek(0)
         return outfile
         # Static output
-        #  return join(self.build_dir_path(identifier), "JPEG", identifier+".jpg")
+        # return join(self.build_dir_path(identifier), "JPEG", identifier+".jpg")
 
     def get_jpg_techmd(self, identifier):
         jpg = Image.open(self.get_jpg(identifier))
@@ -268,9 +266,7 @@ class GetTifTechnicalMetadata(Resource):
 
 
 class GetJpg(Resource):
-    # TODO: Handle paramters on this endpoint for jpg size
     def get(self, identifier):
-
         parser = reqparse.RequestParser()
         parser.add_argument('width', type=int, location='args')
         parser.add_argument('height', type=int, location='args')
@@ -278,6 +274,12 @@ class GetJpg(Resource):
         args = parser.parse_args()
         if (args['scale'] and args['width']) or (args['scale'] and args['height']):
             raise Error()
+        if args['scale']:
+            if args['scale'] > 1:
+                args['scale'] = 1
+            if args['scale'] < 0:
+                args['scale'] = 1
+
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
         return send_file(
