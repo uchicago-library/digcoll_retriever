@@ -19,6 +19,38 @@ API = Api(BLUEPRINT)
 log = logging.getLogger(__name__)
 
 
+class Omitted(Exception):
+    """
+    Descendants of StorageInterface raise this when a
+    particular functionality hasn't been implemented
+    deliberately in order to trigger fall through functionalities.
+    If you want to completely prevent fall throughs raise something
+    that isn't this exception in the method.
+
+    eg:
+
+    class YesFallThroughBehavior(StorageInterface):
+        # This class will produce tifs from jpgs
+        def __init__(self, config):
+            pass
+
+        def get_jpg(self, identifier):
+            return "/jpgs/this_one.jpg"
+
+    class NoFallThroughBehavior(StorageInterface):
+        # This class wont produce tifs from jpgs
+        def __init__(self, config):
+            pass
+
+        def get_tif(self, identifier):
+            raise NotImplementedError()
+
+        def get_jpg(self, identifier):
+            return "/jpgs/this_one.jpg"
+    """
+    pass
+
+
 class Error(Exception):
     err_name = "Error"
     status_code = 500
@@ -59,31 +91,31 @@ class StorageInterface:
         pass
 
     def get_tif(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_tif_techmd(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_pdf(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_jpg(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_jpg_techmd(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_limb_ocr(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_jej_ocr(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_pos_ocr(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
     def get_descriptive_metadata(self, identifier):
-        raise NotImplementedError()
+        raise Omitted()
 
 
 class MvolLayer1StorageInterface(StorageInterface):
@@ -216,6 +248,53 @@ def statter(storageKls, identifier):
     return contexts
 
 
+def sane_transform_args(args, o_width, o_height):
+    # Scale and width/height are mutually exclusive
+    if (args['height'] or args['width']) and args['scale']:
+        raise ValueError()
+    # If height or width is omitted use the original
+    if args['height'] or args['width']:
+        if args['height'] and not args['width']:
+            args['width'] = o_width
+        if args['width'] and not args['height']:
+            args['height'] = o_height
+    # Quality for jpgs only goes to 95. See Pillow docs
+    # and talk about jpg compression
+    try:
+        if args['quality'] is not None:
+            if args['quality'] > 95:
+                args['quality'] = 95
+        else:
+            args['quality'] = 95
+    except KeyError:
+        pass
+    # Lets all agree to never make something twice as big
+    # as the original is, okay? Good.
+    if args['height'] is not None:
+        if args['height'] > (2 * o_height):
+            args['height'] = 2 * o_height
+    if args['width'] is not None:
+        if args['width'] > (2 * o_width):
+            args['width'] = 2 * o_width
+    if args['scale'] is not None:
+        if args['scale'] > 2:
+            args['scale'] = 2
+    # And how about we but some bottom bounds on here to,
+    # say dimensions no lower than 10x10 and scaling no lower
+    # than 1%
+    if args['width'] is not None:
+        if args['width'] < 10:
+            args['width'] = 10
+    if args['height'] is not None:
+        if args['height'] < 10:
+            args['height'] = 10
+    if args['scale'] is not None:
+        if args['scale'] < .1:
+            args['scale'] = .1
+
+    return args
+
+
 # End stuff that should be moved to lib
 
 
@@ -232,10 +311,36 @@ class Stat(Resource):
 
 class GetTif(Resource):
     def get(self, identifier):
+        parser = reqparse.RequestParser()
+        parser.add_argument('width', type=int, location='args')
+        parser.add_argument('height', type=int, location='args')
+        parser.add_argument('scale', type=float, location='args')
+        args = parser.parse_args()
+
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
+        try:
+            # Explicit implementation
+            master = Image.open(storage_instance.get_tif(unquote(identifier)))
+        except Omitted:
+            # Produce a derivative, try from pdf first, then jpg
+            try:
+                master = Image.open(storage_instance.get_pdf(unquote(identifier)))
+            except Omitted:
+                master = Image.open(storage_instance.get_jpg(unquote(identifier)))
+
+        # Transformations
+        o_width, o_height = master.size
+        args = sane_transform_args(args, o_width, o_height)
+        if args['width'] and args['height']:
+            master = master.resize((args['width'], args['height']))
+        elif args['scale']:
+            master = master.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
+        tif = BytesIO()
+        master.save(tif, "TIFF")
+        tif.seek(0)
         return send_file(
-            storage_instance.get_tif(unquote(identifier)),
+            tif,
             mimetype="image/tif"
         )
 
@@ -253,49 +358,36 @@ class GetJpg(Resource):
         parser.add_argument('width', type=int, location='args')
         parser.add_argument('height', type=int, location='args')
         parser.add_argument('scale', type=float, location='args')
+        parser.add_argument('quality', type=int, location='args')
         args = parser.parse_args()
-        if (args['scale'] and args['width']) or (args['scale'] and args['height']):
-            raise Error()
-        if args['scale']:
-            if args['scale'] > 2:
-                args['scale'] = 2
-            if args['scale'] < 0:
-                args['scale'] = .1
 
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
 
         try:
-            # If the class _explicitly_ defines get jpg then
-            # use that explicit definition, probably to return
-            # a pre-generated static file
-            return send_file(
-                storage_instance.get_jpg(identifier),
-                mime_type="image/jpg"
-            )
-        except NotImplementedError:
-            # The class doesn't define a get_jpg explicitly, so
-            # lets whip one up dynamically from the tif.
-            # TODO: Caches?
-            tif = Image.open(storage_instance.get_tif(unquote(identifier)))
-            o_width, o_height = tif.size
-            if args['width'] and args['height']:
-                # Sanity check, never make it more than 5 times bigger than the original
-                if (args['width'] > (5 * o_width)) or (args['height'] > (5 * o_height)):
-                    args['width'] = 5 * o_width
-                    args['height'] = 5 * o_height
-                tif = tif.resize((args['width'], args['height']))
-            elif args['scale']:
-                tif = tif.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
-            outfile = BytesIO()
-            # 95 quality to leave jpg compression on, but still produce
-            # the best quality image. See Pillow docs for more info
-            tif.save(outfile, "JPEG", quality=95)
-            outfile.seek(0)
-            return send_file(
-                outfile,
-                mimetype="image/jpg"
-            )
+            # Explicit implementation
+            master = Image.open(storage_instance.get_jpg(identifier))
+        except Omitted:
+            # Produce a derivative, try tif first, then pdf
+            try:
+                master = Image.open(storage_instance.get_tif(unquote(identifier)))
+            except Omitted:
+                master = Image.open(storage_instance.get_pdf(unquote(identifier)))
+
+        # Transformations
+        o_width, o_height = master.size
+        args = sane_transform_args(args, o_width, o_height)
+        if args['width'] and args['height']:
+            master = master.resize((args['width'], args['height']))
+        elif args['scale']:
+            master = master.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
+        jpg = BytesIO()
+        master.save(jpg, "JPEG", quality=args['quality'])
+        jpg.seek(0)
+        return send_file(
+            jpg,
+            mimetype="image/jpg"
+        )
 
 
 class GetJpgTechnicalMetadata(Resource):
@@ -339,10 +431,19 @@ class GetPdf(Resource):
     def get(self, identifier):
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
-        return send_file(
-            storage_instance.get_pdf(unquote(identifier)),
-            mimetype="application/pdf"
-        )
+
+        # PDFs have to be explicit at the moment, and don't
+        # support transformation because of (I believe) the following
+        # issues in Pillow:
+        # https://github.com/python-pillow/Pillow/issues/1630
+        # https://github.com/python-pillow/Pillow/issues/2049
+        #
+        # TODO: When/if the above are fixed follow the same
+        # formula as the tif and jpg endpoints here for dynamic
+        # generation if no explicit option is available
+        # TODO: Test if this effects generating things _from_ pdf
+
+        return send_file(storage_instance.get_pdf(unquote(identifier)))
 
 
 class GetMetadata(Resource):
