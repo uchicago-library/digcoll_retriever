@@ -1,9 +1,10 @@
-[![Build Status](https://travis-ci.org/uchicago-library/digcoll_retriever.svg?branch=master)](https://travis-ci.org/uchicago-library/digcoll_retriever) 
+[![Build Status](https://travis-ci.org/uchicago-library/digcoll_retriever.svg?branch=master)](https://travis-ci.org/uchicago-library/digcoll_retriever) <-- #TODO will continue failing until I get some test files in the repository itself 
 
 # digcoll_retriever
 A retriever meant to allow API access to contents of owncloud for arbitrary collecition or exhibition interfaces
 
 # Environmental Variables
+
 
 * DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
 * DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER: The username of the owncloud account which holds the publication shares for the files
@@ -124,21 +125,39 @@ Returns the DC metadata
 
 # Development
 
-Development of extensions for the digcoll_retriever is meant to be as painless as possible. No functionalities are required (though obviously your implementation will become more useful the more it implements, and some interfaces may impose their own functionality requirements). Functionalities may either be implemented at the storage level, by writing new methods on the StorageInterface class and implementing them in child classes, or at the service level, writing new endpoints and using storage level functionalities to return results via the web interface.
+Development of extensions for the digcoll_retriever is meant to be as painless as possible. No functionalities are required (though obviously your implementation will become more useful the more it implements, and some interfaces may impose their own functionality requirements).
+
+Functionalities may either be implemented at the storage level, by writing new methods on the StorageInterface class and implementing them in child classes, or at the service level, writing new endpoints and using storage level functionalities to return results via the web interface.
+
+New functionalities should have an inheritable method added to StorageInterface which raises Omitted(). Child classes may then over ride that method to implement the functionality, and potential helpers may try to call the method off a child class and catch Omitted with the expectation that they can continue to attempt some work aroundi/fallback.
+
+All storage interface child classes should implement a class/static method called "claim_identifier"
+which accepts a string as an argument, returning True if the class handles that kind of identifier.
+
+All configuration is (and should continue to be) done via environmental variables. Any environmental variable prefixed with DIGCOLL\_RETRIEVER\_ will be accessible via the BLUEPRINT.config object for use by endpoint classes.
+
+## Handy tidbits
+
+- PIL.Image.open() and Flask.send\_file() both accept either file paths or file like objects (such as instances of io.BytesIO) as inputs
+- All the endpoints on the receiving end use urllib.parse.unquote to reconstruct potentially escaped identifiers which are passed via the URLs
+- All scaling math uses math.floor()
+- All image manipulation and derivative storage is done in RAM. You've been warned.
+- Identifiers in the URLs are considered [paths](http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules) by flask to avoid pre-mature URL escaping and interpretation in the URLs.
+
 
 ## Existing Functionalities
 
 ### get_tif
 #### Arguments
-* identifier
-
+* identifier (str)
 
 #### Return Value
+A file path or file like object representing the tif file
 
 
 ### get_jpg
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the jpg file
@@ -146,7 +165,7 @@ A file path or file like object representing the jpg file
 
 ### get_pdf
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the pdf file
@@ -154,7 +173,7 @@ A file path or file like object representing the pdf file
 
 ### get_descriptive_metadata
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the dc.xml file
@@ -162,7 +181,7 @@ A file path or file like object representing the dc.xml file
 
 ### get_tif_techmd
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A json object adhering to the previously mentioned json schema, documenting the width and the height of the _existing_ tif image, if one exists.
@@ -170,7 +189,7 @@ A json object adhering to the previously mentioned json schema, documenting the 
 
 ### get_jpg_techmd
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A json object adhering to the previously mentioned json schema, documenting the width and the height of the _existing_ jpg image, if one exists.
@@ -178,7 +197,7 @@ A json object adhering to the previously mentioned json schema, documenting the 
 
 ### get_limb_ocr
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the limb ocr file
@@ -186,7 +205,7 @@ A file path or file like object representing the limb ocr file
 
 ### get_jej_ocr
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the jej ocr file
@@ -194,7 +213,7 @@ A file path or file like object representing the jej ocr file
 
 ### get_pos_ocr
 #### Arguments
-* identifier
+* identifier (str)
 
 #### Return Value
 A file path or file like object representing the pos ocr file
