@@ -67,7 +67,7 @@ class StorageInterface:
     def get_pdf(self, identifier):
         raise NotImplementedError()
 
-    def get_jpg(self, identifier, width=600, height=480):
+    def get_jpg(self, identifier):
         raise NotImplementedError()
 
     def get_jpg_techmd(self, identifier):
@@ -169,30 +169,6 @@ class MvolLayer4StorageInterface(StorageInterface):
         width, height = tif.size
         return {"width": width, "height": height}
 
-    def get_jpg(self, identifier, width=None, height=None, scale=None):
-        # Dynamically generate the jpg from the tif
-        tif = Image.open(self.get_tif(identifier))
-        o_width, o_height = tif.size
-        if width and height:
-            if (width > (5 * o_width)) or (height > (5* o_height)):
-                width = None
-                height = None
-            if width and height:
-                tif = tif.resize((width, height))
-        elif scale:
-            tif = tif.resize((floor(o_width * scale), floor(o_height * scale)))
-        outfile = BytesIO()
-        tif.save(outfile, "JPEG", quality=95)
-        outfile.seek(0)
-        return outfile
-        # Static output
-        # return join(self.build_dir_path(identifier), "JPEG", identifier+".jpg")
-
-    def get_jpg_techmd(self, identifier):
-        jpg = Image.open(self.get_jpg(identifier))
-        width, height = jpg.size
-        return {"width": width, "height": height}
-
     def get_limb_ocr(self, identifier):
         return join(self.build_dir_path(identifier), "ALTO", identifier+".xml")
 
@@ -220,7 +196,9 @@ def determine_identifier_type(identifier):
 def statter(storageKls, identifier):
     contexts = []
     if storageKls.get_tif != StorageInterface.get_tif:
+        # Take into account dynamic jpg generation
         contexts.append(API.url_for(GetTif, identifier=identifier))
+        contexts.append(API.url_for(GetJpg, identifier=identifier))
     if storageKls.get_tif_techmd != StorageInterface.get_tif_techmd:
         contexts.append(API.url_for(GetTifTechnicalMetadata, identifier=identifier))
     if storageKls.get_pdf != StorageInterface.get_pdf:
@@ -286,11 +264,38 @@ class GetJpg(Resource):
 
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
-        return send_file(
-            storage_instance.get_jpg(unquote(identifier), width=args['width'], height=args['height'],
-                                     scale=args['scale']),
-            mimetype="image/jpg"
-        )
+
+        try:
+            # If the class _explicitly_ defines get jpg then
+            # use that explicit definition, probably to return
+            # a pre-generated static file
+            return send_file(
+                storage_instance.get_jpg(identifier),
+                mime_type="image/jpg"
+            )
+        except NotImplementedError:
+            # The class doesn't define a get_jpg explicitly, so
+            # lets whip one up dynamically from the tif.
+            # TODO: Caches?
+            tif = Image.open(storage_instance.get_tif(unquote(identifier)))
+            o_width, o_height = tif.size
+            if args['width'] and args['height']:
+                # Sanity check, never make it more than 5 times bigger than the original
+                if (args['width'] > (5 * o_width)) or (args['height'] > (5 * o_height)):
+                    args['width'] = 5 * o_width
+                    args['height'] = 5 * o_height
+                tif = tif.resize((args['width'], args['height']))
+            elif args['scale']:
+                tif = tif.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
+            outfile = BytesIO()
+            # 95 quality to leave jpg compression on, but still produce
+            # the best quality image. See Pillow docs for more info
+            tif.save(outfile, "JPEG", quality=95)
+            outfile.seek(0)
+            return send_file(
+                outfile,
+                mimetype="image/jpg"
+            )
 
 
 class GetJpgTechnicalMetadata(Resource):
