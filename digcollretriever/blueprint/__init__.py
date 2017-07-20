@@ -10,6 +10,12 @@ from flask_restful import Resource, Api, reqparse
 
 from PIL import Image
 
+try:
+    from redis import StrictRedis
+    REDIS_SUPPORT = True
+except ImportError:
+    REDIS_SUPPORT = False
+
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
 BLUEPRINT.config = {}
@@ -81,6 +87,32 @@ def handle_errors(error):
 
 
 # When not as lazy probably move all the following to lib
+
+
+class RedisCache:
+    def __init__(self, redis, ttl=1800):
+        self.redis = redis
+        self.ttl = ttl
+
+    def cache_data(self, key, data):
+        if isinstance(data, BytesIO):
+            self.redis.set(key, data.read(), ex=self.ttl)
+            data.seek(0)
+        elif isinstance(data, str):
+            # Hope its a filepath!
+            with open(data) as f:
+                self.redis.set(key, f.read(), ex=self.ttl)
+
+    def cache_str(self, key, data):
+        self.redis.set(key, data, ex=self.ttl)
+
+    def get(self, key):
+        v = self.redis.get(key)
+        # The data was accessed, bump its ttl back up
+        if v is not None:
+            self.redis.pexpire(key, self.ttl)
+        return v
+
 
 class StorageInterface:
     @classmethod
@@ -393,6 +425,13 @@ class GetTif(Resource):
         # Transformations
         o_width, o_height = master.size
         args = sane_transform_args(args, o_width, o_height)
+        if BLUEPRINT.config.get("REDIS_CACHE") is not None:
+            print("Checking cache")
+            cached = BLUEPRINT.config["REDIS_CACHE"].get("{}::{}::{}".format(
+                identifier, str(args['width']), str(args['height'])))
+            if cached:
+                print("Found it")
+                return send_file(BytesIO(cached), mimetype="image/tif")
         if args['width'] and args['height']:
             master = master.resize((args['width'], args['height']))
         elif args['scale']:
@@ -400,6 +439,12 @@ class GetTif(Resource):
         tif = BytesIO()
         master.save(tif, "TIFF")
         tif.seek(0)
+        if BLUEPRINT.config.get("REDIS_CACHE") is not None:
+            print("Sending result to cache")
+            BLUEPRINT.config['REDIS_CACHE'].cache_data(
+                "{}::{}::{}".format(identifier, str(args['width']), str(args['height'])),
+                tif
+            )
         return send_file(
             tif,
             mimetype="image/tif"
@@ -523,6 +568,17 @@ def handle_configs(setup_state):
     BLUEPRINT.config.update(app.config)
     if BLUEPRINT.config.get('DEFER_CONFIG'):
         return
+
+    if REDIS_SUPPORT:
+        if BLUEPRINT.config.get("REDIS_HOST") is not None:
+            BLUEPRINT.config['REDIS_CACHE'] = \
+                RedisCache(
+                    StrictRedis(
+                        host=BLUEPRINT.config['REDIS_HOST'],
+                        port=BLUEPRINT.config.get('REDIS_PORT', 6379),
+                        db=BLUEPRINT.config.get("REDIS_DB", 0)
+                    )
+                )
 
     if BLUEPRINT.config.get("VERBOSITY"):
         logging.basicConfig(level=BLUEPRINT.config['VERBOSITY'])
