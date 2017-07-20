@@ -118,6 +118,58 @@ class StorageInterface:
         raise Omitted()
 
 
+class FlatTifDirStorageInterface(StorageInterface):
+    """
+    An example implementation of another storage interface class.
+    This one will take a directory full of tifs with only lowercase
+    letters and numbers in their file names and serve them as tifs
+    and jpgs via the web interface.
+    """
+    @classmethod
+    def claim_identifier(cls, identifier):
+        if re.match("^flattifdir-[a-z0-9]+$"):
+            return True
+
+    def __init__(self, conf):
+        self.root = conf['FLAT_TIF_DIR_ROOT']
+
+    def get_tif(self, identifier):
+        return join(self.root, identifier[11:] + ".tif")
+
+
+class FlatJpgDirStorageInterface(StorageInterface):
+    """
+    An example implementation of another storage interface class.
+    This one will take a directory full of jpgs with only lowercase
+    letters and numbers in their file names and serve them as tifs
+    and jpgs via the web interface.
+    """
+    @classmethod
+    def claim_identifier(cls, identifier):
+        if re.match("^flatjpgdir-[a-z0-9]+$"):
+            return True
+
+    def __init__(self, conf):
+        self.root = conf['FLAT_JPG_DIR_ROOT']
+
+    def get_jpg(self, identifier):
+        return join(self.root, identifier[11:] + ".jpg")
+
+
+class FlatJpgDirNoBadTifsStorageInterface(FlatJpgDirStorageInterface):
+    """
+    A subclass of the above, which will refuse to produce tifs
+    from jpgs dynamically
+    """
+    @classmethod
+    def claim_identifier(cls, identifier):
+        if re.match("^flatjpgdirnobadtifs-[a-z0-9]+$"):
+            return True
+
+    def get_tif(self, identifier):
+        raise NotImplementedError()
+
+
 class MvolLayer1StorageInterface(StorageInterface):
     @classmethod
     def claim_identifier(cls, identifier):
@@ -216,7 +268,10 @@ def determine_identifier_type(identifier):
         MvolLayer1StorageInterface,
         MvolLayer2StorageInterface,
         MvolLayer3StorageInterface,
-        MvolLayer4StorageInterface
+        MvolLayer4StorageInterface,
+        FlatTifDirStorageInterface,  # Example implementation
+        FlatJpgDirStorageInterface,  # Example implementation
+        FlatJpgDirNoBadTifsStorageInterface  # Example implementation
     ]
 
     for x in id_types:
@@ -226,6 +281,10 @@ def determine_identifier_type(identifier):
 
 
 def statter(storageKls, identifier):
+    # TODO
+    # Without more class introspection this gets a little wonky if classes
+    # are making their own decisions about whether or not to let dynamic
+    # derivatives be created.
     contexts = []
     if storageKls.get_tif != StorageInterface.get_tif:
         # Take into account dynamic jpg generation
@@ -236,7 +295,9 @@ def statter(storageKls, identifier):
     if storageKls.get_pdf != StorageInterface.get_pdf:
         contexts.append(API.url_for(GetPdf, identifier=identifier))
     if storageKls.get_jpg != StorageInterface.get_jpg:
+        # Take into account dynamic tif generation
         contexts.append(API.url_for(GetJpg, identifier=identifier))
+        contexts.append(API.url_for(GetTif, identifier=identifier))
     if storageKls.get_jpg_techmd != StorageInterface.get_jpg_techmd:
         contexts.append(API.url_for(GetJpgTechnicalMetadata, identifier=identifier))
     if storageKls.get_limb_ocr != StorageInterface.get_limb_ocr:
