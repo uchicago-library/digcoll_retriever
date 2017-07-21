@@ -36,7 +36,17 @@ stat_schema = {
 }
 
 
-class DigCollRetrieverTests(unittest.TestCase):
+root_schema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "status": {"type": "string",
+                  "pattern": "^Not broken!$"}
+    }
+}
+
+
+class DigCollRetrieverMvolStorageNoJpgTests(unittest.TestCase):
     def setUp(self):
         self.app = digcollretriever.app.test_client()
         digcollretriever.blueprint.BLUEPRINT.config = {
@@ -61,6 +71,8 @@ class DigCollRetrieverTests(unittest.TestCase):
     def testGetRoot(self):
         rv = self.app.get("/")
         rj = self.response_200_json(rv)
+        jsonschema.validate(rj, root_schema)
+
 
     def testGetStat(self):
         rj = self.response_200_json(
