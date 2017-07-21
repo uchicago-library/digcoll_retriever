@@ -461,9 +461,11 @@ class GetJpg(Resource):
         except Omitted:
             # Produce a derivative, try tif first, then pdf
             try:
+                log.debug("Explicit functionality omitted, creating derivative jpg from tif")
                 master = Image.open(storage_instance.get_tif(unquote(identifier)))
                 log.info("Explicit functionality omitted, created derivative jpg from tif")
             except Omitted:
+                log.debug("Explicit functionality omitted, creating derivative jpg from pdf")
                 master = Image.open(storage_instance.get_pdf(unquote(identifier)))
                 log.info("Explicit functionality omitted, created derivative jpg from pdf")
 
@@ -513,9 +515,11 @@ class GetJpgThumbnail(Resource):
         except Omitted:
             # Produce a derivative, try tif first, then pdf
             try:
+                log.debug("Explicit functionality omitted, creating derivative jpg from tif")
                 master = Image.open(storage_instance.get_tif(unquote(identifier)))
                 log.info("Explicit functionality omitted, created derivative jpg from tif")
             except Omitted:
+                log.debug("Explicit functionality omitted, creating derivative jpg from pdf")
                 master = Image.open(storage_instance.get_pdf(unquote(identifier)))
                 log.info("Explicit functionality omitted, created derivative jpg from pdf")
 
