@@ -1,6 +1,7 @@
 import unittest
 import json
-from os import environ
+from os import environ, getcwd
+from os.path import join
 from urllib.parse import quote
 import jsonschema
 
@@ -39,7 +40,7 @@ class DigCollRetrieverTests(unittest.TestCase):
     def setUp(self):
         self.app = digcollretriever.app.test_client()
         digcollretriever.blueprint.BLUEPRINT.config = {
-            "MVOL_OWNCLOUD_ROOT": "/home/brian/sandbox/mock_oc_root",
+            "MVOL_OWNCLOUD_ROOT": join(getcwd(), "sandbox", "mock_oc_root"),
             "MVOL_OWNCLOUD_USER": "ldr_oc_admin",
             "MVOL_OWNCLOUD_SUBPATH": "Preservation Unit"
         }
