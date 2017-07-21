@@ -67,10 +67,21 @@ class Error(Exception):
 
 class UnknownIdentifierFormatError(Error):
     err_name = "UnknownIdentifierFormatError"
+    message = "No handlers found for that identifier"
 
 
 class UnsupportedContextError(Error):
     err_name = "UnsupportedContextError"
+    message = "That context isn't supported for this endpoint!"
+
+
+class ContextError(Error):
+    err_name = "ContextError"
+    message = "Something went wrong trying to access that context!"
+
+
+class MutuallyExclusiveParametersError(Error):
+    err_name = "MutuallyExclusiveParametersError"
 
 
 @BLUEPRINT.errorhandler(Error)
@@ -277,7 +288,7 @@ def determine_identifier_type(identifier):
     for x in id_types:
         if x.claim_identifier(identifier):
             return x
-    raise UnknownIdentifierFormatError(identifier)
+    raise UnknownIdentifierFormatError()
 
 
 def statter(storageKls, identifier):
@@ -285,6 +296,7 @@ def statter(storageKls, identifier):
     # Without more class introspection this gets a little wonky if classes
     # are making their own decisions about whether or not to let dynamic
     # derivatives be created.
+    log.debug("Statting storage class for functionalities implementation")
     contexts = []
     if storageKls.get_tif != StorageInterface.get_tif:
         # Take into account dynamic jpg generation
@@ -312,19 +324,27 @@ def statter(storageKls, identifier):
 def sane_transform_args(args, o_width, o_height):
     # Scale and width/height are mutually exclusive
     if (args['height'] or args['width']) and args['scale']:
-        raise ValueError()
+        log.warn(
+            "Received a request containing scale in conjuction with width or height"
+        )
+        raise MutuallyExclusiveParametersError(
+            "Scale can not be used in conjunction with width or height"
+        )
     # If height or width is omitted use the original
     if args['height'] or args['width']:
         if args['height'] and not args['width']:
             args['width'] = o_width
+            log.debug("Assuming width as default")
         if args['width'] and not args['height']:
             args['height'] = o_height
+            log.debug("Assuming height as default")
     # Quality for jpgs only goes to 95. See Pillow docs
     # and talk about jpg compression
     try:
         if args['quality'] is not None:
             if args['quality'] > 95:
                 args['quality'] = 95
+                log.info("Quality > 95 passed. Capping value")
         else:
             args['quality'] = 95
     except KeyError:
@@ -334,25 +354,30 @@ def sane_transform_args(args, o_width, o_height):
     if args['height'] is not None:
         if args['height'] > (2 * o_height):
             args['height'] = 2 * o_height
+            log.info("Height > 2 * original passed. Capping value")
     if args['width'] is not None:
         if args['width'] > (2 * o_width):
             args['width'] = 2 * o_width
+            log.info("Width > 2 * original passed. Capping value")
     if args['scale'] is not None:
         if args['scale'] > 2:
             args['scale'] = 2
+            log.info("Scale > 2 passed. Capping value")
     # And how about we but some bottom bounds on here to,
     # say dimensions no lower than 10x10 and scaling no lower
     # than 1%
     if args['width'] is not None:
         if args['width'] < 10:
             args['width'] = 10
+            log.info("Width < 10 passed. Capping value")
     if args['height'] is not None:
         if args['height'] < 10:
             args['height'] = 10
+            log.info("Height < 10 passed. Capping value")
     if args['scale'] is not None:
         if args['scale'] < .1:
             args['scale'] = .1
-
+            log.info("Scale < .1 passed. Capping value")
     return args
 
 
@@ -383,34 +408,38 @@ class GetTif(Resource):
         try:
             # Explicit implementation
             master = Image.open(storage_instance.get_tif(unquote(identifier)))
+            log.info("Utilized explicit tif retrieval implementation")
         except Omitted:
             # Produce a derivative, try from pdf first, then jpg
             try:
                 master = Image.open(storage_instance.get_pdf(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative tif from pdf")
             except Omitted:
                 master = Image.open(storage_instance.get_jpg(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative tif from jpg")
 
         # Transformations
-        o_width, o_height = master.size
-        args = sane_transform_args(args, o_width, o_height)
-        if args['width'] and args['height']:
-            master = master.resize((args['width'], args['height']))
-        elif args['scale']:
-            master = master.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
+        if args['width'] or args['height'] or args['scale']:
+            log.info("Transformation parameter present. Performing transformation.")
+            o_width, o_height = master.size
+            args = sane_transform_args(args, o_width, o_height)
+            if args['width'] and args['height']:
+                log.debug("Performing transformation according to explicit width/height")
+                master = master.resize((args['width'], args['height']))
+            elif args['scale']:
+                log.debug("Performing transformation according to scaling constant")
+                master = master.resize((floor(o_width * args['scale']),
+                                        floor(o_height * args['scale'])))
+            log.info("Transformation complete")
         tif = BytesIO()
+        log.debug("Saving result to RAM object")
         master.save(tif, "TIFF")
         tif.seek(0)
+        log.debug("Returning result image")
         return send_file(
             tif,
             mimetype="image/tif"
         )
-
-
-class GetTifTechnicalMetadata(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        return storage_instance.get_tif_techmd(unquote(identifier))
 
 
 class GetJpg(Resource):
@@ -428,63 +457,39 @@ class GetJpg(Resource):
         try:
             # Explicit implementation
             master = Image.open(storage_instance.get_jpg(identifier))
+            log.info("Utilized explicit jpg retrieval implementation")
         except Omitted:
             # Produce a derivative, try tif first, then pdf
             try:
                 master = Image.open(storage_instance.get_tif(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative jpg from tif")
             except Omitted:
                 master = Image.open(storage_instance.get_pdf(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative jpg from pdf")
 
         # Transformations
-        o_width, o_height = master.size
-        args = sane_transform_args(args, o_width, o_height)
-        if args['width'] and args['height']:
-            master = master.resize((args['width'], args['height']))
-        elif args['scale']:
-            master = master.resize((floor(o_width * args['scale']), floor(o_height * args['scale'])))
+        if args['width'] or args['height'] or args['scale'] or args['quality']:
+            log.info("Transformation parameter present. Performing transformation.")
+            o_width, o_height = master.size
+            args = sane_transform_args(args, o_width, o_height)
+            if args['width'] and args['height']:
+                log.debug("Performing transformation according to explicit width/height")
+                master = master.resize((args['width'], args['height']))
+            elif args['scale']:
+                log.debug("Performing transformation according to scaling constant")
+                master = master.resize((floor(o_width * args['scale']),
+                                        floor(o_height * args['scale'])))
+            log.info("Transformation complete")
         jpg = BytesIO()
+        log.debug("Saving result to RAM object")
+        if args['quality'] is None:
+            args['quality'] = 95
         master.save(jpg, "JPEG", quality=args['quality'])
         jpg.seek(0)
+        log.debug("Returning result image")
         return send_file(
             jpg,
             mimetype="image/jpg"
-        )
-
-
-class GetJpgTechnicalMetadata(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        return storage_instance.get_jpg_techmd(unquote(identifier))
-
-
-class GetLimbOcr(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        return send_file(
-            storage_instance.get_limb_ocr(unquote(identifier)),
-            mimetype="text"
-        )
-
-
-class GetJejOcr(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        return send_file(
-            storage_instance.get_jej_ocr(unquote(identifier)),
-            mimetype="text"
-        )
-
-
-class GetPosOcr(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        return send_file(
-            storage_instance.get_pos_ocr(unquote(identifier)),
-            mimetype="text"
         )
 
 
@@ -504,16 +509,67 @@ class GetPdf(Resource):
         # generation if no explicit option is available
         # TODO: Test if this effects generating things _from_ pdf
 
+        log.info("Utilizing explicit pdf retrieval implementation")
         return send_file(storage_instance.get_pdf(unquote(identifier)))
+
+
+class GetTifTechnicalMetadata(Resource):
+    def get(self, identifier):
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        log.info("Attempting to retrieve tif technical metadata")
+        return storage_instance.get_tif_techmd(unquote(identifier))
+
+
+class GetJpgTechnicalMetadata(Resource):
+    def get(self, identifier):
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        log.info("Attempting to retrieve jpg technical metadata")
+        return storage_instance.get_jpg_techmd(unquote(identifier))
 
 
 class GetMetadata(Resource):
     def get(self, identifier):
         storage_kls = determine_identifier_type(unquote(identifier))
         storage_instance = storage_kls(BLUEPRINT.config)
+        log.debug("Utilizing explict descriptive metadata retrieval implementation")
         return send_file(
             storage_instance.get_descriptive_metadata(unquote(identifier)),
             mimetype="text/xml"
+        )
+
+
+class GetLimbOcr(Resource):
+    def get(self, identifier):
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        log.debug("Utilizing explicit limb OCR retreival implementation")
+        return send_file(
+            storage_instance.get_limb_ocr(unquote(identifier)),
+            mimetype="text"
+        )
+
+
+class GetJejOcr(Resource):
+    def get(self, identifier):
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        # TODO
+        return send_file(
+            storage_instance.get_jej_ocr(unquote(identifier)),
+            mimetype="text"
+        )
+
+
+class GetPosOcr(Resource):
+    def get(self, identifier):
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+        log.debug("Utilizing explicit POS OCR retrieval implementation")
+        return send_file(
+            storage_instance.get_pos_ocr(unquote(identifier)),
+            mimetype="text"
         )
 
 
@@ -522,11 +578,14 @@ def handle_configs(setup_state):
     app = setup_state.app
     BLUEPRINT.config.update(app.config)
     if BLUEPRINT.config.get('DEFER_CONFIG'):
+        log.debug("DEFER_CONFIG set, skipping configuration")
         return
 
     if BLUEPRINT.config.get("VERBOSITY"):
+        log.debug("Setting verbosity to {}".format(str(BLUEPRINT.config['VERBOSITY'])))
         logging.basicConfig(level=BLUEPRINT.config['VERBOSITY'])
     else:
+        log.debug("No verbosity option set, defaulting to WARN")
         logging.basicConfig(level="WARN")
 
 
