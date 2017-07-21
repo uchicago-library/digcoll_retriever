@@ -493,6 +493,48 @@ class GetJpg(Resource):
         )
 
 
+class GetJpgThumbnail(Resource):
+    def get(self, identifier):
+        parser = reqparse.RequestParser()
+        parser.add_argument('width', type=int, location='args', required=True)
+        parser.add_argument('height', type=int, location='args', required=True)
+        parser.add_argument('quality', type=int, location='args')
+        args = parser.parse_args()
+        # Bandaid
+        args['scale'] = None
+
+        storage_kls = determine_identifier_type(unquote(identifier))
+        storage_instance = storage_kls(BLUEPRINT.config)
+
+        try:
+            # Explicit implementation
+            master = Image.open(storage_instance.get_jpg(identifier))
+            log.info("Utilized explicit jpg retrieval implementation")
+        except Omitted:
+            # Produce a derivative, try tif first, then pdf
+            try:
+                master = Image.open(storage_instance.get_tif(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative jpg from tif")
+            except Omitted:
+                master = Image.open(storage_instance.get_pdf(unquote(identifier)))
+                log.info("Explicit functionality omitted, created derivative jpg from pdf")
+
+        # Transformations
+        o_width, o_height = master.size
+        args = sane_transform_args(args, o_width, o_height)
+        master.thumbnail((args['width'], args['height']))
+        if args['quality'] is None:
+            args['quality'] = 95
+        thumb = BytesIO()
+        master.save(thumb, "JPEG", quality=args['quality'])
+        thumb.seek(0)
+        return send_file(
+            thumb,
+            mimetype="image/jpg"
+        )
+
+
+
 class GetPdf(Resource):
     def get(self, identifier):
         storage_kls = determine_identifier_type(unquote(identifier))
@@ -594,6 +636,7 @@ API.add_resource(Stat, "/<path:identifier>/stat")
 API.add_resource(GetTif, "/<path:identifier>/tif")
 API.add_resource(GetTifTechnicalMetadata, "/<path:identifier>/tif/technical_metadata")
 API.add_resource(GetJpg, "/<path:identifier>/jpg")
+API.add_resource(GetJpgThumbnail, "/<path:identifier>/jpg/thumb")
 API.add_resource(GetJpgTechnicalMetadata, "/<path:identifier>/jpg/technical_metadata")
 API.add_resource(GetLimbOcr, "/<path:identifier>/ocr/limb")
 API.add_resource(GetJejOcr, "/<path:identifier>/ocr/jej")
