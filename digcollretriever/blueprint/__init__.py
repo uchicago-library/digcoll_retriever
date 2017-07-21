@@ -375,9 +375,9 @@ def sane_transform_args(args, o_width, o_height):
             args['height'] = 10
             log.info("Height < 10 passed. Capping value")
     if args['scale'] is not None:
-        if args['scale'] < .1:
-            args['scale'] = .1
-            log.info("Scale < .1 passed. Capping value")
+        if args['scale'] < .01:
+            args['scale'] = .01
+            log.info("Scale < .01 passed. Capping value")
     return args
 
 
@@ -520,14 +520,18 @@ class GetJpgThumbnail(Resource):
                 log.info("Explicit functionality omitted, created derivative jpg from pdf")
 
         # Transformations
+        log.info("Performing transformation.")
         o_width, o_height = master.size
         args = sane_transform_args(args, o_width, o_height)
         master.thumbnail((args['width'], args['height']))
+        log.info("Transformation complete")
         if args['quality'] is None:
             args['quality'] = 95
         thumb = BytesIO()
+        log.debug("Saving result to RAM object")
         master.save(thumb, "JPEG", quality=args['quality'])
         thumb.seek(0)
+        log.debug("Returning result image")
         return send_file(
             thumb,
             mimetype="image/jpg"
