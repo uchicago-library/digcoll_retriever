@@ -70,7 +70,7 @@ def sane_transform_args(args, o_width, o_height):
 def determine_identifier_type(identifier):
     id_types = [
         x[1] for x in inspect.getmembers(
-            sys.modules['digcoll_retriever_lib.storageinterfaces'],
+            sys.modules['digcollretriever_lib.storageinterfaces'],
             inspect.isclass
         )
     ]
