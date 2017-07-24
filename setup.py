@@ -22,6 +22,6 @@ setup(
         'flask_restful',
         'jsonschema',
         'pillow',
-        'digcollretriever_lib>0'
+        'digcollretriever_lib'
     ],
 )
