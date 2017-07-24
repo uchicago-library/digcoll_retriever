@@ -9,8 +9,8 @@ from flask_restful import Resource, Api, reqparse
 from PIL import Image
 
 from .lib import determine_identifier_type, sane_transform_args
-from digcoll_retriever_lib.storageinterfaces import StorageInterface
-from digcoll_retriever_lib.exceptions import Error, Omitted
+from digcollretriever_lib.storageinterfaces import StorageInterface
+from digcollretriever_lib.exceptions import Error, Omitted
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
