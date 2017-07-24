@@ -12,11 +12,16 @@ setup(
         exclude = [
         ]
     ),
+    dependency_links = [
+        'https://github.com/uchicago-library/digcollretriever_lib' +
+        '/tarball/master#egg=digcollretriever_lib'
+    ],
     install_requires = [
         'flask>0',
         'flask_env',
         'flask_restful',
         'jsonschema',
-        'pillow'
+        'pillow',
+        'digcollretriever_lib'
     ],
 )

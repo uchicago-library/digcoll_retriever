@@ -1,14 +1,16 @@
 import logging
 from urllib.parse import unquote
 from io import BytesIO
-import re
-from os.path import join
 from math import floor
 
 from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api, reqparse
 
 from PIL import Image
+
+from .lib import determine_identifier_type, sane_transform_args
+from digcollretriever_lib.storageinterfaces import StorageInterface
+from digcollretriever_lib.exceptions import Error, Omitted
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
@@ -17,278 +19,6 @@ BLUEPRINT.config = {}
 API = Api(BLUEPRINT)
 
 log = logging.getLogger(__name__)
-
-
-class Omitted(Exception):
-    """
-    Descendants of StorageInterface raise this when a
-    particular functionality hasn't been implemented
-    deliberately in order to trigger fall through functionalities.
-    If you want to completely prevent fall throughs raise something
-    that isn't this exception in the method.
-
-    eg:
-
-    class YesFallThroughBehavior(StorageInterface):
-        # This class will produce tifs from jpgs
-        def __init__(self, config):
-            pass
-
-        def get_jpg(self, identifier):
-            return "/jpgs/this_one.jpg"
-
-    class NoFallThroughBehavior(StorageInterface):
-        # This class wont produce tifs from jpgs
-        def __init__(self, config):
-            pass
-
-        def get_tif(self, identifier):
-            raise NotImplementedError()
-
-        def get_jpg(self, identifier):
-            return "/jpgs/this_one.jpg"
-    """
-    pass
-
-
-class Error(Exception):
-    err_name = "Error"
-    status_code = 500
-    message = ""
-
-    def __init__(self, message=None):
-        if message is not None:
-            self.message = message
-
-    def to_dict(self):
-        return {"message": self.message,
-                "error_name": self.err_name}
-
-
-class UnknownIdentifierFormatError(Error):
-    err_name = "UnknownIdentifierFormatError"
-    message = "No handlers found for that identifier"
-
-
-class UnsupportedContextError(Error):
-    err_name = "UnsupportedContextError"
-    message = "That context isn't supported for this endpoint!"
-
-
-class ContextError(Error):
-    err_name = "ContextError"
-    message = "Something went wrong trying to access that context!"
-
-
-class MutuallyExclusiveParametersError(Error):
-    err_name = "MutuallyExclusiveParametersError"
-
-
-@BLUEPRINT.errorhandler(Error)
-def handle_errors(error):
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
-
-
-# When not as lazy probably move all the following to lib
-
-class StorageInterface:
-    @classmethod
-    def claim_identifier(cls, identifier):
-        return False
-
-    def __init__(self, conf):
-        pass
-
-    def get_tif(self, identifier):
-        raise Omitted()
-
-    def get_tif_techmd(self, identifier):
-        raise Omitted()
-
-    def get_pdf(self, identifier):
-        raise Omitted()
-
-    def get_jpg(self, identifier):
-        raise Omitted()
-
-    def get_jpg_techmd(self, identifier):
-        raise Omitted()
-
-    def get_limb_ocr(self, identifier):
-        raise Omitted()
-
-    def get_jej_ocr(self, identifier):
-        raise Omitted()
-
-    def get_pos_ocr(self, identifier):
-        raise Omitted()
-
-    def get_descriptive_metadata(self, identifier):
-        raise Omitted()
-
-
-class FlatTifDirStorageInterface(StorageInterface):
-    """
-    An example implementation of another storage interface class.
-    This one will take a directory full of tifs with only lowercase
-    letters and numbers in their file names and serve them as tifs
-    and jpgs via the web interface.
-    """
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^flattifdir-[a-z0-9]+$"):
-            return True
-
-    def __init__(self, conf):
-        self.root = conf['FLAT_TIF_DIR_ROOT']
-
-    def get_tif(self, identifier):
-        return join(self.root, identifier[11:] + ".tif")
-
-
-class FlatJpgDirStorageInterface(StorageInterface):
-    """
-    An example implementation of another storage interface class.
-    This one will take a directory full of jpgs with only lowercase
-    letters and numbers in their file names and serve them as tifs
-    and jpgs via the web interface.
-    """
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^flatjpgdir-[a-z0-9]+$"):
-            return True
-
-    def __init__(self, conf):
-        self.root = conf['FLAT_JPG_DIR_ROOT']
-
-    def get_jpg(self, identifier):
-        return join(self.root, identifier[11:] + ".jpg")
-
-
-class FlatJpgDirNoBadTifsStorageInterface(FlatJpgDirStorageInterface):
-    """
-    A subclass of the above, which will refuse to produce tifs
-    from jpgs dynamically
-    """
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^flatjpgdirnobadtifs-[a-z0-9]+$"):
-            return True
-
-    def get_tif(self, identifier):
-        raise NotImplementedError()
-
-
-class MvolLayer1StorageInterface(StorageInterface):
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^mvol-[0-9]{4}$", identifier):
-            return True
-
-    def __init__(self, conf):
-        pass
-
-
-class MvolLayer2StorageInterface(StorageInterface):
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^mvol-[0-9]{4}-[0-9]{4}$", identifier):
-            return True
-
-    def __init__(self, conf):
-        pass
-
-
-class MvolLayer3StorageInterface(StorageInterface):
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^mvol-[0-9]{4}-[0-9]{4}-[0-9]{4}$", identifier):
-            return True
-
-    def __init__(self, conf):
-        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
-        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
-        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
-
-    def build_dir_path(self, identifier):
-        return join(
-            self.MVOL_OWNCLOUD_ROOT,
-            "data",
-            self.MVOL_OWNCLOUD_USER,
-            "files",
-            self.MVOL_OWNCLOUD_SUBPATH,
-            "mvol",
-            identifier.split("-")[1],
-            identifier.split("-")[2],
-            identifier.split("-")[3]
-        )
-
-    def get_pdf(self, identifier):
-        return join(self.build_dir_path(identifier), identifier+".pdf")
-
-    def get_descriptive_metadata(self, identifier):
-        return join(self.build_dir_path(identifier), identifier+".dc.xml")
-
-
-class MvolLayer4StorageInterface(StorageInterface):
-    @classmethod
-    def claim_identifier(cls, identifier):
-        if re.match("^mvol-[0-9]{4}-[0-9]{4}-[0-9]{4}_[0-9]{4}$", identifier):
-            return True
-
-    def __init__(self, conf):
-        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
-        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
-        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
-
-    def build_dir_path(self, identifier):
-        return join(
-            self.MVOL_OWNCLOUD_ROOT,
-            "data",
-            self.MVOL_OWNCLOUD_USER,
-            "files",
-            self.MVOL_OWNCLOUD_SUBPATH,
-            "mvol",
-            identifier.split("-")[1],
-            identifier.split("-")[2],
-            identifier.split("-")[3].split("_")[0]
-        )
-
-    def get_tif(self, identifier):
-        return join(self.build_dir_path(identifier), "TIFF", identifier+".tif")
-
-    def get_tif_techmd(self, identifier):
-        tif = Image.open(self.get_tif(identifier))
-        width, height = tif.size
-        return {"width": width, "height": height}
-
-    def get_limb_ocr(self, identifier):
-        return join(self.build_dir_path(identifier), "ALTO", identifier+".xml")
-
-    def get_jej_ocr(self, identifier):
-        pass
-
-    def get_pos_ocr(self, identifier):
-        pass
-
-
-def determine_identifier_type(identifier):
-    id_types = [
-        MvolLayer1StorageInterface,
-        MvolLayer2StorageInterface,
-        MvolLayer3StorageInterface,
-        MvolLayer4StorageInterface,
-        FlatTifDirStorageInterface,  # Example implementation
-        FlatJpgDirStorageInterface,  # Example implementation
-        FlatJpgDirNoBadTifsStorageInterface  # Example implementation
-    ]
-
-    for x in id_types:
-        if x.claim_identifier(identifier):
-            return x
-    raise UnknownIdentifierFormatError()
 
 
 def statter(storageKls, identifier):
@@ -321,67 +51,11 @@ def statter(storageKls, identifier):
     return contexts
 
 
-def sane_transform_args(args, o_width, o_height):
-    # Scale and width/height are mutually exclusive
-    if (args['height'] or args['width']) and args['scale']:
-        log.warn(
-            "Received a request containing scale in conjuction with width or height"
-        )
-        raise MutuallyExclusiveParametersError(
-            "Scale can not be used in conjunction with width or height"
-        )
-    # If height or width is omitted use the original
-    if args['height'] or args['width']:
-        if args['height'] and not args['width']:
-            args['width'] = o_width
-            log.debug("Assuming width as default")
-        if args['width'] and not args['height']:
-            args['height'] = o_height
-            log.debug("Assuming height as default")
-    # Quality for jpgs only goes to 95. See Pillow docs
-    # and talk about jpg compression
-    try:
-        if args['quality'] is not None:
-            if args['quality'] > 95:
-                args['quality'] = 95
-                log.info("Quality > 95 passed. Capping value")
-        else:
-            args['quality'] = 95
-    except KeyError:
-        pass
-    # Lets all agree to never make something twice as big
-    # as the original is, okay? Good.
-    if args['height'] is not None:
-        if args['height'] > (2 * o_height):
-            args['height'] = 2 * o_height
-            log.info("Height > 2 * original passed. Capping value")
-    if args['width'] is not None:
-        if args['width'] > (2 * o_width):
-            args['width'] = 2 * o_width
-            log.info("Width > 2 * original passed. Capping value")
-    if args['scale'] is not None:
-        if args['scale'] > 2:
-            args['scale'] = 2
-            log.info("Scale > 2 passed. Capping value")
-    # And how about we but some bottom bounds on here to,
-    # say dimensions no lower than 10x10 and scaling no lower
-    # than 1%
-    if args['width'] is not None:
-        if args['width'] < 10:
-            args['width'] = 10
-            log.info("Width < 10 passed. Capping value")
-    if args['height'] is not None:
-        if args['height'] < 10:
-            args['height'] = 10
-            log.info("Height < 10 passed. Capping value")
-    if args['scale'] is not None:
-        if args['scale'] < .01:
-            args['scale'] = .01
-            log.info("Scale < .01 passed. Capping value")
-    return args
-
-
-# End stuff that should be moved to lib
+@BLUEPRINT.errorhandler(Error)
+def handle_errors(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 
 class Root(Resource):
@@ -540,7 +214,6 @@ class GetJpgThumbnail(Resource):
             thumb,
             mimetype="image/jpg"
         )
-
 
 
 class GetPdf(Resource):
