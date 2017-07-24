@@ -1,8 +1,8 @@
 import logging
 import sys
 import inspect
-from digcoll_retriever_lib.exceptions import MutuallyExclusiveParametersError
-from digcoll_retriever_lib.storageinterfaces import *
+from digcollretriever_lib.exceptions import MutuallyExclusiveParametersError
+from digcollretriever_lib.storageinterfaces import *
 
 log = logging.getLogger(__name__)
 
