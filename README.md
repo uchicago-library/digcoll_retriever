@@ -137,5 +137,24 @@ Returns the DC metadata
 - All image manipulation and derivative storage is done in RAM. You've been warned.
 - Identifiers in the URLs are considered [paths](http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules) by flask to avoid pre-mature URL escaping and interpretation in the URLs.
 
+### Developing a New Endpoint
+
+When implementing a new endpoint generally follow the example of using digcollretriever.blueprint.lib.get_identifier_type() in order to return the class which handles the identifier and providing the digcollretriever.blueprint.BLUEPRINT.config dictionary to the classes \_\_init\_\_ in order to instantiate an instance of the StorageInterface class. The storage interface classes provide the following methods.
+
+```
+claim_identifier
+get_tif
+get_tif_techmd
+get_pdf
+get_jpg
+get_jpg_techmd
+get_limb_ocr
+get_jej_ocr
+get_pos_ocr
+get_descriptive_metadata
+```
+
+Further information on the StorageInterface classes, and the expected method behavior, can be found [in the digcollretriever_lib repository](https://github.com/uchicago-library/digcollretriever_lib)
+
 
 Image used in tests originally from https://www.flickr.com/photos/fannydesbaumes/35263390573/in/photostream/ CCSA
