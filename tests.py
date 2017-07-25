@@ -9,41 +9,8 @@ import jsonschema
 # to the tests setUp() function
 environ['DIGCOLL_RETRIEVER_DEFER_CONFIG'] = "True"
 import digcollretriever
-
-
-# For more info: http://json-schema.org/
-techmd_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "properties": {
-        "width": {"type": "integer"},
-        "height":  {"type": "integer"}
-    },
-}
-
-# TODO: Regex for relative URL string validation in the items pattern
-stat_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "properties": {
-        "identifier": {"type": "string",
-                       "pattern": "^.+$"},
-        "contexts_available": {"type": "array",
-                               "items": {"type": "string",
-                                         "pattern": "^.*$"},
-                               "minItems": 0}
-    }
-}
-
-
-root_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "properties": {
-        "status": {"type": "string",
-                  "pattern": "^Not broken!$"}
-    }
-}
+from digcollretriever_lib.schemas import \
+    techmd_schema, stat_schema, root_schema
 
 
 class DigCollRetrieverMvolStorageNoJpgTests(unittest.TestCase):
@@ -72,7 +39,6 @@ class DigCollRetrieverMvolStorageNoJpgTests(unittest.TestCase):
         rv = self.app.get("/")
         rj = self.response_200_json(rv)
         jsonschema.validate(rj, root_schema)
-
 
     def testGetStat(self):
         rj = self.response_200_json(
