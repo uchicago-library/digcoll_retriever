@@ -67,13 +67,24 @@ def sane_transform_args(args, o_width, o_height):
     return args
 
 
-def determine_identifier_type(identifier):
+def determine_identifier_type(identifier, omits=[], includes=[]):
+    """
+    omits (list[cls]): Classes to omit from the those checked
+        to potentially handle the identifier
+
+    includes (list[cls]): Classes to explicit include in those
+        checked to potentially handle the identifier
+
+    Returns: A storage class
+    """
     id_types = [
         x[1] for x in inspect.getmembers(
             sys.modules['digcollretriever_lib.storageinterfaces'],
             inspect.isclass
         )
     ]
+
+    id_types = [x for x in id_types if x not in omits] + includes
 
     for x in id_types:
         if x.claim_identifier(identifier):
