@@ -1,6 +1,7 @@
 import logging
 import sys
 import inspect
+from math import floor
 from digcollretriever_lib.exceptions import MutuallyExclusiveParametersError
 from digcollretriever_lib.storageinterfaces import *
 
@@ -64,6 +65,11 @@ def sane_transform_args(args, o_width, o_height):
         if args['scale'] < .01:
             args['scale'] = .01
             log.info("Scale < .01 passed. Capping value")
+    # For cropping you must pass all values
+    if args['cropstartx'] or args['cropstarty'] or args['cropendx'] or args['cropendy']:
+        if not args['cropstartx'] and args['cropstarty'] and args['cropendx'] and args['cropendy']:
+            # TODO make an exception for this
+            raise ValueError()
     return args
 
 
@@ -90,3 +96,36 @@ def determine_identifier_type(identifier, omits=[], includes=[]):
         if x.claim_identifier(identifier):
             return x
     raise UnknownIdentifierFormatError()
+
+
+def should_transform(args):
+    yes = ['width', 'height', 'scale', 'quality', 'cropstartx', 'cropstarty',
+           'cropendx', 'cropendy']
+    for x in yes:
+        if args.get(x) is not None:
+            return True
+    return False
+
+
+def general_transform(master, args):
+    """
+    Handles resizing, scaling, and cropping
+    """
+    log.info("Transformation parameter present. Performing transformation.")
+    o_width, o_height = master.size
+    args = sane_transform_args(args, o_width, o_height)
+    if args['width'] and args['height']:
+        log.debug("Performing transformation according to explicit width/height")
+        master = master.resize((args['width'], args['height']))
+    elif args['scale']:
+        log.debug("Performing transformation according to scaling constant")
+        master = master.resize((floor(o_width * args['scale']),
+                                floor(o_height * args['scale'])))
+    # We can just check for one, sane_args makes sure they're all there
+    log.debug(str(args))
+    if args['cropstartx'] is not None:
+        log.debug("Performing cropping")
+        master = master.crop((args['cropstartx'], args['cropstarty'],
+                             args['cropendx'], args['cropendy']))
+    log.info("Transformation complete")
+    return master

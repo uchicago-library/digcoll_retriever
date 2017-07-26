@@ -1,14 +1,14 @@
 import logging
 from urllib.parse import unquote
 from io import BytesIO
-from math import floor
 
 from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api, reqparse
 
 from PIL import Image
 
-from .lib import determine_identifier_type, sane_transform_args
+from .lib import determine_identifier_type, sane_transform_args, \
+    should_transform, general_transform
 from digcollretriever_lib.storageinterfaces import StorageInterface
 from digcollretriever_lib.exceptions import Error, Omitted
 
@@ -44,8 +44,6 @@ def statter(storageKls, identifier):
         contexts.append(API.url_for(GetJpgTechnicalMetadata, identifier=identifier))
     if storageKls.get_limb_ocr != StorageInterface.get_limb_ocr:
         contexts.append(API.url_for(GetLimbOcr, identifier=identifier))
-    if storageKls.get_jej_ocr != StorageInterface.get_jej_ocr:
-        contexts.append(API.url_for(GetJejOcr, identifier=identifier))
     if storageKls.get_pos_ocr != StorageInterface.get_pos_ocr:
         contexts.append(API.url_for(GetPosOcr, identifier=identifier))
     return contexts
@@ -75,6 +73,10 @@ class GetTif(Resource):
         parser.add_argument('width', type=int, location='args')
         parser.add_argument('height', type=int, location='args')
         parser.add_argument('scale', type=float, location='args')
+        parser.add_argument('cropstartx', type=int, location='args')
+        parser.add_argument('cropstarty', type=int, location='args')
+        parser.add_argument('cropendx', type=int, location='args')
+        parser.add_argument('cropendy', type=int, location='args')
         args = parser.parse_args()
 
         storage_kls = determine_identifier_type(unquote(identifier))
@@ -93,18 +95,9 @@ class GetTif(Resource):
                 log.info("Explicit functionality omitted, created derivative tif from jpg")
 
         # Transformations
-        if args['width'] or args['height'] or args['scale']:
-            log.info("Transformation parameter present. Performing transformation.")
-            o_width, o_height = master.size
-            args = sane_transform_args(args, o_width, o_height)
-            if args['width'] and args['height']:
-                log.debug("Performing transformation according to explicit width/height")
-                master = master.resize((args['width'], args['height']))
-            elif args['scale']:
-                log.debug("Performing transformation according to scaling constant")
-                master = master.resize((floor(o_width * args['scale']),
-                                        floor(o_height * args['scale'])))
-            log.info("Transformation complete")
+        if should_transform(args):
+            master = general_transform(master, args)
+
         tif = BytesIO()
         log.debug("Saving result to RAM object")
         master.save(tif, "TIFF")
@@ -123,6 +116,10 @@ class GetJpg(Resource):
         parser.add_argument('height', type=int, location='args')
         parser.add_argument('scale', type=float, location='args')
         parser.add_argument('quality', type=int, location='args')
+        parser.add_argument('cropstartx', type=int, location='args')
+        parser.add_argument('cropstarty', type=int, location='args')
+        parser.add_argument('cropendx', type=int, location='args')
+        parser.add_argument('cropendy', type=int, location='args')
         args = parser.parse_args()
 
         storage_kls = determine_identifier_type(unquote(identifier))
@@ -144,20 +141,12 @@ class GetJpg(Resource):
                 log.info("Explicit functionality omitted, created derivative jpg from pdf")
 
         # Transformations
-        if args['width'] or args['height'] or args['scale'] or args['quality']:
-            log.info("Transformation parameter present. Performing transformation.")
-            o_width, o_height = master.size
-            args = sane_transform_args(args, o_width, o_height)
-            if args['width'] and args['height']:
-                log.debug("Performing transformation according to explicit width/height")
-                master = master.resize((args['width'], args['height']))
-            elif args['scale']:
-                log.debug("Performing transformation according to scaling constant")
-                master = master.resize((floor(o_width * args['scale']),
-                                        floor(o_height * args['scale'])))
-            log.info("Transformation complete")
+        if should_transform(args):
+            master = general_transform(master, args)
+
         jpg = BytesIO()
         log.debug("Saving result to RAM object")
+        # JPEG specific
         if args['quality'] is None:
             args['quality'] = 95
         master.save(jpg, "JPEG", quality=args['quality'])
@@ -205,6 +194,7 @@ class GetJpgThumbnail(Resource):
         log.info("Transformation complete")
         if args['quality'] is None:
             args['quality'] = 95
+
         thumb = BytesIO()
         log.debug("Saving result to RAM object")
         master.save(thumb, "JPEG", quality=args['quality'])
@@ -274,17 +264,6 @@ class GetLimbOcr(Resource):
         )
 
 
-class GetJejOcr(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        # TODO
-        return send_file(
-            storage_instance.get_jej_ocr(unquote(identifier)),
-            mimetype="text"
-        )
-
-
 class GetPosOcr(Resource):
     def get(self, identifier):
         storage_kls = determine_identifier_type(unquote(identifier))
@@ -320,7 +299,6 @@ API.add_resource(GetJpg, "/<path:identifier>/jpg")
 API.add_resource(GetJpgThumbnail, "/<path:identifier>/jpg/thumb")
 API.add_resource(GetJpgTechnicalMetadata, "/<path:identifier>/jpg/technical_metadata")
 API.add_resource(GetLimbOcr, "/<path:identifier>/ocr/limb")
-API.add_resource(GetJejOcr, "/<path:identifier>/ocr/jej")
 API.add_resource(GetPosOcr, "/<path:identifier>/ocr/pos")
 API.add_resource(GetPdf, "/<path:identifier>/pdf")
 API.add_resource(GetMetadata, "/<path:identifier>/metadata")
