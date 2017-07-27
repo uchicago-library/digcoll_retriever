@@ -100,13 +100,39 @@ class GetTif(Resource):
 
         tif = BytesIO()
         log.debug("Saving result to RAM object")
-        master.save(tif, "TIFF")
-        tif.seek(0)
-        log.debug("Returning result image")
-        return send_file(
-            tif,
-            mimetype="image/tif"
-        )
+        # Some tifs make PIL explode,
+        # see here: https://github.com/python-pillow/Pillow/issues/2278
+        # Luckily, it is _usually_ the case that people want tifs
+        # at native sizes, so I'm going to try and catch it and just
+        # throw back the tif, if this looks like the case, bypassing PIL
+        # It also appears as though this is the only case if you attempt
+        # to rewrite the tif without altering it to a BytesIO instance.
+        # Transformations followed by rewriting the tif appear to be
+        # fine, even if trying to write out the original "native" tif
+        # would cause an error.
+        try:
+            master.save(tif, "TIFF")
+            tif.seek(0)
+            log.debug("Returning result image")
+            return send_file(
+                tif,
+                mimetype="image/tif"
+            )
+        except AttributeError:
+            log.debug("Backup functionality because PIL doesn't like this tif...")
+            # We can't do any transformations
+            # This may be redundant, see above comment about transformations
+            # followed by a rewrite making PIL happy to write the tif to
+            # a BytesIO()
+            if should_transform(args) is True:
+                log.debug("Fallback failed, requester wanted transformations")
+                raise
+            else:
+                log.debug("The requester didn't want any transformations - sending the native tif")
+                return send_file(
+                    storage_instance.get_tif(unquote(identifier)),
+                    mimetype="image/tif"
+                )
 
 
 class GetJpg(Resource):
