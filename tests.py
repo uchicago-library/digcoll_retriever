@@ -51,12 +51,6 @@ class DigCollRetrieverMvolStorageNoJpgTests(unittest.TestCase):
             self.app.get("/{}/jpg".format(quote("mvol-0001-0002-0003_0001")))
         )
 
-#    def testGetJpgTechnicalMetadata(self):
-#        rj = self.response_200_json(
-#            self.app.get("/{}/jpg/technical_metadata".format(quote("mvol-0001-0002-0003_0001")))
-#        )
-#        jsonschema.validate(rj, techmd_schema)
-
     def testGetTif(self):
         rv = self.response_200(
             self.app.get("/{}/tif".format(quote("mvol-0001-0002-0003_0001")))
@@ -76,11 +70,6 @@ class DigCollRetrieverMvolStorageNoJpgTests(unittest.TestCase):
     def testGetLimbOCR(self):
         rv = self.response_200(
             self.app.get("/{}/ocr/limb".format(quote("mvol-0001-0002-0003_0001")))
-        )
-
-    def testGetJejOCR(self):
-        rv = self.response_200(
-            self.app.get("/{}/ocr/jej".format(quote("mvol-0001-0002-0003_0001")))
         )
 
     def testGetPOSOCR(self):
