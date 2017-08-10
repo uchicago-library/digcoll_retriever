@@ -1,1 +1,1 @@
-gunicorn digcollretriever:app -w 4 -t 30 -b 0.0.0.0:5000
+gunicorn digcollretriever:app -w ${DIGCOLL_RETRIEVER_WORKERS:-4} -t ${DIGCOLL_RETRIEVER_TIMEOUT:-30} -b ${DIGCOLL_RETRIEVER_HOST:-0.0.0.0}:${DIGCOLL_RETRIEVER_PORT:-5000}

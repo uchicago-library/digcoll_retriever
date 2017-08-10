@@ -105,12 +105,6 @@ None
 ### Description
 Returns the limb ocr data as text
 
-## /$identifier/ocr/jej
-### URL Paramaters
-None
-### Description
-Returns the jej ocr data as text
-
 ## /$identifier/ocr/pos
 ### URL Paramaters
 None
@@ -139,7 +133,12 @@ Returns the DC metadata
 
 ### Developing a New Endpoint
 
-When implementing a new endpoint generally follow the example of using digcollretriever.blueprint.lib.get_identifier_type() in order to return the class which handles the identifier and providing the digcollretriever.blueprint.BLUEPRINT.config dictionary to the classes \_\_init\_\_ in order to instantiate an instance of the StorageInterface class. The storage interface classes provide the following methods.
+When implementing a new endpoint generally follow the example of using digcollretriever.blueprint.lib.get_identifier_type() in order to return the class which handles the identifier and providing the digcollretriever.blueprint.BLUEPRINT.config dictionary to the classes \_\_init\_\_ in order to instantiate an instance of the StorageInterface class. 
+
+
+### Developiong a new Storage Interface
+
+The storage interface classes provide the following methods.
 
 ```
 claim_identifier
