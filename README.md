@@ -152,12 +152,12 @@ get_pdf
 get_jpg
 get_jpg_techmd
 get_limb_ocr
-get_jej_ocr
 get_pos_ocr
 get_descriptive_metadata
 ```
 
-Further information on the StorageInterface classes, and the expected method behavior, can be found [in the digcollretriever_lib repository](https://github.com/uchicago-library/digcollretriever_lib)
+To implement a new StorageInterface class navigate to the digcollretriever.lib.storageinterfaces module and write a new child class inheriting from StorageInterface. The StorageInterface class itself defines the method footprint and individual method signatures and return values which are expected by the digcollretriever API.
 
+Functionality from StorageInterface not overloaded will signal to the API that it can attempt to use fallback methods in order to satisfy the request (by raising an instance of digcollretriever.lib.exceptions.Omitted). If you wish to prevent fallbacks implement a method with the same footprint which raises an exception which is not an instance of digcollretriever_lib.exceptions.Omitted.
 
 Image used in tests originally from https://www.flickr.com/photos/fannydesbaumes/35263390573/in/photostream/ CCSA
