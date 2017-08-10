@@ -67,7 +67,7 @@ Returns binary tif image data, optionally transforming the returned image in res
 
 ## /$identifier/tif/technical_metadata
 ### URL Paramaters
-None
+* None
 ### Description
 Returns JSON formatted data representing the width and height of the native tif image in the following form:
 ```
@@ -115,7 +115,7 @@ Returns the limb ocr data as text
 
 ## /$identifier/ocr/pos
 ### URL Paramaters
-None
+* None
 ### Description
 Returns the pos ocr data as text
 
@@ -127,7 +127,7 @@ Returns binary pdf image data, transformations are not currently supported.
 
 ## /$identifier/metadata
 ### URL Paramaters
-None
+* None
 ### Description
 Returns the DC metadata
 
