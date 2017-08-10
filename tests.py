@@ -9,7 +9,7 @@ import jsonschema
 # to the tests setUp() function
 environ['DIGCOLL_RETRIEVER_DEFER_CONFIG'] = "True"
 import digcollretriever
-from digcollretriever_lib.schemas import \
+from digcollretriever.blueprint.lib.schemas import \
     techmd_schema, stat_schema, root_schema
 
 

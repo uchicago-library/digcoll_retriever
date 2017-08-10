@@ -2,8 +2,8 @@ import logging
 import sys
 import inspect
 from math import floor
-from digcollretriever_lib.exceptions import MutuallyExclusiveParametersError
-from digcollretriever_lib.storageinterfaces import *
+from .exceptions import MutuallyExclusiveParametersError
+from .storageinterfaces import *
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def determine_identifier_type(identifier, omits=[], includes=[]):
     """
     id_types = [
         x[1] for x in inspect.getmembers(
-            sys.modules['digcollretriever_lib.storageinterfaces'],
+            sys.modules['digcollretriever.blueprint.lib.storageinterfaces'],
             inspect.isclass
         )
     ]
