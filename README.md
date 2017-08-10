@@ -3,7 +3,7 @@
 # digcoll_retriever
 A retriever meant to allow API access to image files on disk and limited supplemental information for arbitrary collecition or exhibition interfaces.
 
-# Quickstart Example Using Owncloud Storage Interface
+# Quickstart Example Using Owncloud Storage Interface and the MVOL File System Specification
 ```
 $ git clone https://github.com/uchicago-library/digcoll_retriever.git
 $ cd digcoll_retriever
@@ -131,7 +131,7 @@ Returns binary pdf image data, transformations are not currently supported.
 ### Description
 Returns the DC metadata
 
-## Handy tidbits for Developers
+## Handy Tidbits for Developers
 
 - PIL.Image.open() and Flask.send\_file() both accept either file paths or file like objects (such as instances of io.BytesIO) as inputs
 - All the endpoints on the receiving end use urllib.parse.unquote to reconstruct potentially escaped identifiers which are passed via the URLs
@@ -144,7 +144,7 @@ Returns the DC metadata
 When implementing a new endpoint generally follow the example of using digcollretriever.blueprint.lib.get_identifier_type() in order to return the class which handles the identifier and providing the digcollretriever.blueprint.BLUEPRINT.config dictionary to the classes \_\_init\_\_ in order to instantiate an instance of the StorageInterface class. 
 
 
-### Developiong a new Storage Interface
+### Developing a New Storage Interface
 
 The storage interface classes provide the following methods.
 
