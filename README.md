@@ -10,6 +10,9 @@ A retriever meant to allow API access to contents of owncloud for arbitrary coll
 
 ## Global Optional Env Vars
 * DIGCOLL_RETRIEVER_VERBOSITY: Controls the logging verbosity
+* DIGCOLL_RETRIEVER_HOST: The host address for gunicorn to bind to if using gunicorn_debug.sh. Defaults to 0.0.0.0
+* DIGCOLL_RETRIEVER_PORT: The port for gunicorn to bind to if using gunicorn_debug.sh. Defaults to 5000.
+* DIGCOLL_RETRIEVER_WORKERS: The number of workers for gunicorn to spawn if using gunicorn_debug.sh. Defaults to 4.
 
 ## MVOL Owncloud Implementation Required Env Vars
 * DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
