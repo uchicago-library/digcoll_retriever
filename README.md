@@ -12,6 +12,13 @@ $ pip install gunicorn
 $ DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT="/absolute/path/to/oc/root/here" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER="your_oc_username" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="A Unit Name" ./gunicorn_launch.sh
 ```
 
+# Docker Quickstart with Owncloud Storage Interface and the Mvol File System Specification
+```
+# docker build . --build-arg DIGCOLL_RETRIEVER_SECRET_KEY=itsasecret -t digcoll_retriever
+# docker run -p 5000:5000 -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT=/owncloud_root -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER=ldr_oc_admin -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="Preservation Unit" -v $(pwd)/sandbox/mock_oc_root:/owncloud_root digcoll_retriever
+```
+Note that the environmental variable provided as DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT should match the volume mount inside of the container. In the above example it is assumed you're running docker run from the git repo directory, and will use the test data.
+
 # Environmental Variables / Configuration
 
 ## Global Required Env Vars
