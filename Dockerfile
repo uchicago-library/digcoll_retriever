@@ -1,17 +1,1 @@
-FROM python:3.5-alpine
-COPY . /code
-WORKDIR /code
-RUN python setup.py install
-RUN pip install gunicorn
-ARG SECRET_KEY=passThisAtBuildTime
-ARG WORKERS=4
-ARG TIMEOUT=30
-ARG PORT=8911
-ARG VERBOSITY=WARN
-ENV \
-  DIGCOLL_RETRIEVER_SECRET_KEY=${SECRET_KEY} \
-  DIGCOLL_RETRIEVER_VERBOSITY=${VERBOSITY} \
-  WORKERS=${WORKERS} \
-  TIMEOUT=${TIMEOUT} \
-  PORT=${PORT} 
-CMD gunicorn digcollretriever:app -w ${WORKERS} -t ${TIMEOUT} -b 0.0.0.0:${PORT}
+Dockerfile.nginx
