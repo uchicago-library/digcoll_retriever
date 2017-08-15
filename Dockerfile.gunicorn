@@ -1,7 +1,4 @@
 FROM python:3.5
-RUN pip install greenlet
-RUN pip install eventlet
-RUN pip install gunicorn
 RUN mkdir /owncloud_root
 COPY . /code
 WORKDIR /code
@@ -12,6 +9,7 @@ ARG DIGCOLL_RETRIEVER_VERBOSITY=WARN
 ARG DIGCOLL_RETRIEVER_HOST=0.0.0.0
 ARG DIGCOLL_RETRIEVER_SECRET_KEY
 RUN test -n "$DIGCOLL_RETRIEVER_SECRET_KEY"
+RUN pip install -r requirements.txt
 RUN python setup.py install
 ENV \
   DIGCOLL_RETRIEVER_SECRET_KEY=${DIGCOLL_RETRIEVER_SECRET_KEY} \
