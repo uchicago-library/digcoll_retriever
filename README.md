@@ -7,10 +7,11 @@ A retriever meant to allow API access to image files on disk and limited supplem
 ```
 $ git clone https://github.com/uchicago-library/digcoll_retriever.git
 $ cd digcoll_retriever
+$ pip install -r requirements.txt
 $ python setup.py install
-$ pip install gunicorn
-$ DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT="/absolute/path/to/oc/root/here" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER="your_oc_username" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="A Unit Name" ./gunicorn_launch.sh
+$ DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT="/absolute/path/to/oc/root/here" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER="your_oc_username" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="A Unit Name" ./nginx_launch.sh
 ```
+**Warning** this script will overwrite anything at /etc/nginx/nginx.conf - alter the script if you are running an nginx server for any other reason, or need to run this service in concert with others on the same host.
 
 # Docker Quickstart with Owncloud Storage Interface and the Mvol File System Specification
 ```
