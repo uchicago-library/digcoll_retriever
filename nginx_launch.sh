@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 
 echo "DIGCOLL_RETRIEVER_VERBOSITY: ${DIGCOLL_RETRIEVER_VERBOSITY:-default}"
 echo "DIGCOLL_RETRIEVER_HOST: ${DIGCOLL_RETRIEVER_HOST:-default}"
@@ -9,7 +9,7 @@ echo "DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT: ${DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_RO
 echo "DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER: ${DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER:-omitted}"
 echo "DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH: ${DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH:-omitted}"
 
-APP_SAVE=$FLASK_APP
-export FLASK_APP=digcollretriever
-python -m flask run -h ${DIGCOLL_RETRIEVER_HOST:-0.0.0.0} -p ${DIGCOLL_RETRIEVER_PORT:-5000}
-export FLASK_APP=$APP_SAVE
+gunicorn digcollretriever:app -k eventlet -w ${DIGCOLL_RETRIEVER_WORKERS:-4} -t ${DIGCOLL_RETRIEVER_TIMEOUT:-30} -b unix:/tmp/gunicorn.sock &
+echo "Launching nginx"
+envsubst '$$DIGCOLL_RETRIEVER_PORT $$DIGCOLL_RETRIEVER_TIMEOUT' < nginx.template > /etc/nginx/nginx.conf
+nginx -g "daemon off;"
