@@ -1,4 +1,4 @@
-FROM flask_stack
+FROM bnbalsamo/flask_stack:latest
 # https://github.com/bnbalsamo/docker-flask_stack
 
 ARG DIGCOLL_RETRIEVER_VERBOSITY=WARN
