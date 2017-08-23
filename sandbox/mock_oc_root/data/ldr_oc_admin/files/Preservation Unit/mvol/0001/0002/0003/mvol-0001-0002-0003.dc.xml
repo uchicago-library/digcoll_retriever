@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <metadata>
     <title>Test Publication</title>
-    <date>3001-3010</date>
+    <date>3010-08</date>
     <identifier>mvol-0001-0002-0003</identifier>
     <description>A test publication mocked up for testing this API</description>
 </metadata>
