@@ -4,6 +4,7 @@ import inspect
 from math import floor
 from .exceptions import MutuallyExclusiveParametersError
 from .storageinterfaces import *
+from PIL import Image
 
 log = logging.getLogger(__name__)
 
@@ -116,11 +117,11 @@ def general_transform(master, args):
     args = sane_transform_args(args, o_width, o_height)
     if args['width'] and args['height']:
         log.debug("Performing transformation according to explicit width/height")
-        master = master.resize((args['width'], args['height']))
+        master = master.resize((args['width'], args['height']), resample=Image.ANTIALIAS)
     elif args['scale']:
         log.debug("Performing transformation according to scaling constant")
         master = master.resize((floor(o_width * args['scale']),
-                                floor(o_height * args['scale'])))
+                                floor(o_height * args['scale'])), resample=Image.ANTIALIAS)
     # We can just check for one, sane_args makes sure they're all there
     log.debug(str(args))
     if args['cropstartx'] is not None:
