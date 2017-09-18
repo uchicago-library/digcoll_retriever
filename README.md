@@ -2,7 +2,7 @@
 
 v0.0.1
 
-[![Build Status](https://travis-ci.org/bnbalsamo/digcoll_retriever.svg?branch=master)](https://travis-ci.org/bnbalsamo/digcoll_retriever) [![Coverage Status](https://coveralls.io/repos/github/bnbalsamo/digcoll_retriever/badge.svg?branch=master)](https://coveralls.io/github/bnbalsamo/digcoll_retriever?branch=master)
+[![Build Status](https://travis-ci.org/uchicago-library/digcoll_retriever.svg?branch=master)](https://travis-ci.org/uchicago-library/digcoll_retriever) [![Coverage Status](https://coveralls.io/repos/github/uchicago-library/digcoll_retriever/badge.svg?branch=master)](https://coveralls.io/github/uchicago-library/digcoll_retriever?branch=master)
 
 A retriever meant to allow API access to image files on disk and limited supplemental information for arbitrary collecition or exhibition interfaces.
 
