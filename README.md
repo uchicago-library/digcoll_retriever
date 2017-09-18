@@ -1,42 +1,23 @@
-[![Build Status](https://travis-ci.org/uchicago-library/digcoll_retriever.svg?branch=master)](https://travis-ci.org/uchicago-library/digcoll_retriever)
-
 # digcoll_retriever
+
+v0.0.1
+
+[![Build Status](https://travis-ci.org/bnbalsamo/digcoll_retriever.svg?branch=master)](https://travis-ci.org/bnbalsamo/digcoll_retriever) [![Coverage Status](https://coveralls.io/repos/github/bnbalsamo/digcoll_retriever/badge.svg?branch=master)](https://coveralls.io/github/bnbalsamo/digcoll_retriever?branch=master)
+
 A retriever meant to allow API access to image files on disk and limited supplemental information for arbitrary collecition or exhibition interfaces.
 
-# Quickstart Example Using Owncloud Storage Interface and the MVOL File System Specification
+# Debug Quickstart
+Set environmental variables appropriately
 ```
-$ git clone https://github.com/uchicago-library/digcoll_retriever.git
-$ cd digcoll_retriever
-$ pip install -r requirements.txt
-$ python setup.py install
-$ DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT="/absolute/path/to/oc/root/here" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER="your_oc_username" DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="A Unit Name" ./nginx_launch.sh
+./debug.sh
 ```
-**Warning** this script will overwrite anything at /etc/nginx/nginx.conf - alter the script if you are running an nginx server for any other reason, or need to run this service in concert with others on the same host.
 
-# Docker Quickstart with Owncloud Storage Interface and the Mvol File System Specification
+# Docker Quickstart
+Inject environmental variables appropriately at either buildtime or runtime
 ```
-# docker build . --build-arg DIGCOLL_RETRIEVER_SECRET_KEY=itsasecret -t digcoll_retriever
-# docker run -p 5000:5000 -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT=/owncloud_root -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER=ldr_oc_admin -e DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH="Preservation Unit" -v $(pwd)/sandbox/mock_oc_root:/owncloud_root digcoll_retriever
+# docker build . -t digcollretriever
+# docker run -p 5000:80 digcollretriever --name my_digcollretriever
 ```
-Note that the environmental variable provided as DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT should match the volume mount inside of the container. In the above example it is assumed you're running docker run from the git repo directory, and will use the test data.
-
-# Environmental Variables / Configuration
-
-## Global Required Env Vars
-* None
-
-## Global Optional Env Vars
-* DIGCOLL_RETRIEVER_VERBOSITY: Controls the logging verbosity
-* DIGCOLL_RETRIEVER_HOST: The host address to bind to. Defaults to 0.0.0.0
-* DIGCOLL_RETRIEVER_PORT: The port to bind to. Defaults to 5000.
-* DIGCOLL_RETRIEVER_WORKERS: The number of workers for gunicorn to spawn if using gunicorn_launch.sh. Defaults to 4.
-* DIGCOLL_RETRIEVER_TIMEOUT: The time, in seconds, for gunicorn to wait before timing out a connection if using gunicorn_launch.sh. Defaults to 30.
-
-## MVOL Owncloud Implementation Required Env Vars
-* DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
-* DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_USER: The username of the owncloud account which holds the publication shares for the files
-* DIGCOLL_RETRIEVER_MVOL_OWNCLOUD_SUBPATH: Any subpath below the mvol user account which needs to be traversed before hitting the mvol specification file structure
-
 
 # Endpoints
 
@@ -121,12 +102,6 @@ Returns JSON formatted data representing the width and height of the native tif 
 ### Description
 Returns the limb ocr data as text
 
-## /$identifier/ocr/pos
-### URL Paramaters
-* None
-### Description
-Returns the pos ocr data as text
-
 ## /$identifier/pdf
 ### URL Paramaters
 * None
@@ -139,13 +114,18 @@ Returns binary pdf image data, transformations are not currently supported.
 ### Description
 Returns the DC metadata
 
-## Handy Tidbits for Developers
+# Environmental Variables
 
-- PIL.Image.open() and Flask.send\_file() both accept either file paths or file like objects (such as instances of io.BytesIO) as inputs
-- All the endpoints on the receiving end use urllib.parse.unquote to reconstruct potentially escaped identifiers which are passed via the URLs
-- All scaling math uses math.floor()
-- All image manipulation and derivative storage is done in RAM. You've been warned.
-- Identifiers in the URLs are considered [paths](http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules) by flask to avoid pre-mature URL escaping and interpretation in the URLs.
+## Global Required Env Vars
+* None
+
+## Global Optional Env Vars
+* DIGCOLL_RETRIEVER_VERBOSITY: Controls the logging verbosity
+
+## MVOL Owncloud Implementation Required Env Vars
+* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
+* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_USER: The username of the owncloud account which holds the publication shares for the files
+* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_SUBPATH: Any subpath below the mvol user account which needs to be traversed before hitting the mvol specification file structure
 
 ### Developing a New Endpoint
 
@@ -170,6 +150,19 @@ get_descriptive_metadata
 
 To implement a new StorageInterface class navigate to the digcollretriever.blueprint.lib.storageinterfaces module and write a new child class inheriting from StorageInterface. The StorageInterface class itself defines the method footprint and individual method signatures and return values which are expected by the digcollretriever API.
 
-Functionality from StorageInterface not overloaded will signal to the API that it can attempt to use fallback methods in order to satisfy the request (by raising an instance of digcollretriever.blueprint.lib.exceptions.Omitted). If you wish to prevent fallbacks implement a method with the same footprint which raises an exception which is not an instance of digcollretriever.blueprint.lib.exceptions.Omitted.
+Functionality from StorageInterface not overloaded will signal to the API that it can attempt to use fallback methods in order to satisfy the request (by raising an instance of digcollretriever.blueprint.exceptions.Omitted). If you wish to prevent fallbacks implement a method with the same footprint which raises an exception which is not an instance of digcollretriever.blueprint.exceptions.Omitted.
+
+## Handy Tidbits for Developers
+
+- PIL.Image.open() and Flask.send\_file() both accept either file paths or file like objects (such as instances of io.BytesIO) as inputs
+- All the endpoints on the receiving end use urllib.parse.unquote to reconstruct potentially escaped identifiers which are passed via the URLs
+- All scaling math uses math.floor()
+- All image manipulation and derivative storage is done in RAM. You've been warned.
+- Identifiers in the URLs are considered [paths](http://flask.pocoo.org/docs/0.12/quickstart/#variable-rules) by flask to avoid pre-mature URL escaping and interpretation in the URLs.
+
+
+# Author
+Brian Balsamo <balsamo@uchicago.edu>
+
 
 Image used in tests originally from https://www.flickr.com/photos/fannydesbaumes/35263390573/in/photostream/ CCSA

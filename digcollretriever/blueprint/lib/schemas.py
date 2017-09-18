@@ -28,6 +28,6 @@ root_schema = {
     "type": "object",
     "properties": {
         "status": {"type": "string",
-                  "pattern": "^Not broken!$"}
+                   "pattern": "^Not broken!$"}
     }
 }
