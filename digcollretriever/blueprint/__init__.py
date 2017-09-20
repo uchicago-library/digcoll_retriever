@@ -1,16 +1,24 @@
+"""
+digcollretriever
+"""
 import logging
 from urllib.parse import unquote
 from io import BytesIO
 
+from PIL import Image
+
 from flask import Blueprint, jsonify, send_file
 from flask_restful import Resource, Api, reqparse
-
-from PIL import Image
 
 from .lib.storageinterfaces import StorageInterface
 from .lib import determine_identifier_type, sane_transform_args, \
     should_transform, general_transform
-from .lib.exceptions import Error, Omitted
+from .exceptions import Error, Omitted
+
+__author__ = "Brian Balsamo"
+__email__ = "balsamo@uchicago.edu"
+__version__ = "0.0.1"
+
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
 
@@ -19,6 +27,13 @@ BLUEPRINT.config = {}
 API = Api(BLUEPRINT)
 
 log = logging.getLogger(__name__)
+
+
+@BLUEPRINT.errorhandler(Error)
+def handle_errors(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 
 def statter(storageKls, identifier):
@@ -44,16 +59,7 @@ def statter(storageKls, identifier):
         contexts.append(API.url_for(GetJpgTechnicalMetadata, identifier=identifier))
     if storageKls.get_limb_ocr != StorageInterface.get_limb_ocr:
         contexts.append(API.url_for(GetLimbOcr, identifier=identifier))
-    if storageKls.get_pos_ocr != StorageInterface.get_pos_ocr:
-        contexts.append(API.url_for(GetPosOcr, identifier=identifier))
     return contexts
-
-
-@BLUEPRINT.errorhandler(Error)
-def handle_errors(error):
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
 
 
 class Root(Resource):
@@ -290,15 +296,9 @@ class GetLimbOcr(Resource):
         )
 
 
-class GetPosOcr(Resource):
-    def get(self, identifier):
-        storage_kls = determine_identifier_type(unquote(identifier))
-        storage_instance = storage_kls(BLUEPRINT.config)
-        log.debug("Utilizing explicit POS OCR retrieval implementation")
-        return send_file(
-            storage_instance.get_pos_ocr(unquote(identifier)),
-            mimetype="text"
-        )
+class Version(Resource):
+    def get(self):
+        return {"version": __version__}
 
 
 @BLUEPRINT.record
@@ -318,6 +318,7 @@ def handle_configs(setup_state):
 
 
 API.add_resource(Root, "/")
+API.add_resource(Version, "/version")
 API.add_resource(Stat, "/<path:identifier>/stat")
 API.add_resource(GetTif, "/<path:identifier>/tif")
 API.add_resource(GetTifTechnicalMetadata, "/<path:identifier>/tif/technical_metadata")
@@ -325,6 +326,5 @@ API.add_resource(GetJpg, "/<path:identifier>/jpg")
 API.add_resource(GetJpgThumbnail, "/<path:identifier>/jpg/thumb")
 API.add_resource(GetJpgTechnicalMetadata, "/<path:identifier>/jpg/technical_metadata")
 API.add_resource(GetLimbOcr, "/<path:identifier>/ocr/limb")
-API.add_resource(GetPosOcr, "/<path:identifier>/ocr/pos")
 API.add_resource(GetPdf, "/<path:identifier>/pdf")
 API.add_resource(GetMetadata, "/<path:identifier>/metadata")

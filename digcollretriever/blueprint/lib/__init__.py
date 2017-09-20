@@ -2,9 +2,10 @@ import logging
 import sys
 import inspect
 from math import floor
-from .exceptions import MutuallyExclusiveParametersError
+from ..exceptions import MutuallyExclusiveParametersError, UnknownIdentifierFormatError
 from .storageinterfaces import *
 from PIL import Image
+
 
 log = logging.getLogger(__name__)
 
@@ -127,6 +128,6 @@ def general_transform(master, args):
     if args['cropstartx'] is not None:
         log.debug("Performing cropping")
         master = master.crop((args['cropstartx'], args['cropstarty'],
-                             args['cropendx'], args['cropendy']))
+                              args['cropendx'], args['cropendy']))
     log.info("Transformation complete")
     return master

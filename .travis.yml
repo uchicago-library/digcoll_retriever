@@ -2,9 +2,18 @@ language: python
 python:
     - "3.5"
 before_script:
-    - pip install coverage && pip install python-coveralls
-install: "python setup.py install"
-script: coverage run --source digcollretriever tests.py && coverage report
-# Working on coveralls support for organization repositories
-#after_success:
-#    - coveralls
+    - pip install pytest coverage python-coveralls flake8
+install: 
+    - "python setup.py install"
+    - "pip install -r requirements.txt"
+    - "pip install -r requirements_dev.txt"
+script: 
+    - coverage run --source digcollretriever -m py.test 
+    - docker build . -t proj 
+    - docker run proj python /code/tests/test_digcollretriever.py 
+    - flake8 --exit-zero
+after_success:
+    - coverage report
+    - coveralls
+services:
+    - docker

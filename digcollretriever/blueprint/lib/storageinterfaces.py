@@ -1,7 +1,8 @@
-from .exceptions import Omitted
 from os.path import join
 import re
 from PIL import Image
+
+from ..exceptions import Omitted
 
 # NOTE: When implementing your identifier schema be sure that the set of
 # all valid identifiers from other schemas is disjoint from the set of
@@ -134,12 +135,6 @@ class StorageInterface:
         """
         raise Omitted()
 
-    def get_pos_ocr(self, identifier):
-        """
-        # TODO
-        """
-        raise Omitted()
-
     def get_descriptive_metadata(self, identifier):
         """
         Returns DublinCore XML descriptive metadata about an intellectual unit
@@ -252,10 +247,10 @@ class MvolLayer3StorageInterface(StorageInterface):
         )
 
     def get_pdf(self, identifier):
-        return join(self.build_dir_path(identifier), identifier+".pdf")
+        return join(self.build_dir_path(identifier), identifier + ".pdf")
 
     def get_descriptive_metadata(self, identifier):
-        return join(self.build_dir_path(identifier), identifier+".dc.xml")
+        return join(self.build_dir_path(identifier), identifier + ".dc.xml")
 
 
 class MvolLayer4StorageInterface(StorageInterface):
@@ -283,7 +278,7 @@ class MvolLayer4StorageInterface(StorageInterface):
         )
 
     def get_tif(self, identifier):
-        return join(self.build_dir_path(identifier), "TIFF", identifier+".tif")
+        return join(self.build_dir_path(identifier), "TIFF", identifier + ".tif")
 
     def get_tif_techmd(self, identifier):
         tif = Image.open(self.get_tif(identifier))
@@ -291,7 +286,4 @@ class MvolLayer4StorageInterface(StorageInterface):
         return {"width": width, "height": height}
 
     def get_limb_ocr(self, identifier):
-        return join(self.build_dir_path(identifier), "ALTO", identifier+".xml")
-
-    def get_pos_ocr(self, identifier):
-        pass
+        return join(self.build_dir_path(identifier), "ALTO", identifier + ".xml")
