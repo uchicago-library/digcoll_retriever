@@ -10,7 +10,7 @@ install:
 script: 
     - coverage run --source digcollretriever -m py.test 
     - docker build . -t proj 
-    - docker run -v $(pwd)/sandbox/mock_oc_root:/oc_root proj python /code/tests/test_digcollretriever.py 
+    - docker run proj python /code/tests/test_digcollretriever.py 
     - flake8 --exit-zero
 after_success:
     - coverage report
