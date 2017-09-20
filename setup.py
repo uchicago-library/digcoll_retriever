@@ -10,7 +10,7 @@ setup(
     name="digcollretriever",
     description="A retriever meant to allow API access to image files on disk and " +
     "limited supplemental information for arbitrary collecition or exhibition interfaces.",
-    version="0.0.1",
+    version="0.1.0",
     long_description=readme(),
     author="Brian Balsamo",
     author_email="balsamo@uchicago.edu",

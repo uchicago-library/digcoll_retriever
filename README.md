@@ -1,6 +1,6 @@
 # digcoll_retriever
 
-v0.0.1
+v0.1.0
 
 [![Build Status](https://travis-ci.org/uchicago-library/digcoll_retriever.svg?branch=master)](https://travis-ci.org/uchicago-library/digcoll_retriever) [![Coverage Status](https://coveralls.io/repos/github/uchicago-library/digcoll_retriever/badge.svg?branch=master)](https://coveralls.io/github/uchicago-library/digcoll_retriever?branch=master)
 
