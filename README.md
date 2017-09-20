@@ -120,7 +120,7 @@ Returns the DC metadata
 * None
 
 ## Global Optional Env Vars
-* DIGCOLL_RETRIEVER_VERBOSITY: Controls the logging verbosity
+* DIGCOLLRETRIEVER_VERBOSITY: Controls the logging verbosity
 
 ## MVOL Owncloud Implementation Required Env Vars
 * DIGCOLLRETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
