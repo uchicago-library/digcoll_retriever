@@ -229,17 +229,11 @@ class MvolLayer3StorageInterface(StorageInterface):
             return True
 
     def __init__(self, conf):
-        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
-        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
-        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
+        self.MVOL_ROOT = conf['MVOL_ROOT']
 
     def build_dir_path(self, identifier):
         return join(
-            self.MVOL_OWNCLOUD_ROOT,
-            "data",
-            self.MVOL_OWNCLOUD_USER,
-            "files",
-            self.MVOL_OWNCLOUD_SUBPATH,
+            self.MVOL_ROOT,
             "mvol",
             identifier.split("-")[1],
             identifier.split("-")[2],
@@ -260,17 +254,11 @@ class MvolLayer4StorageInterface(StorageInterface):
             return True
 
     def __init__(self, conf):
-        self.MVOL_OWNCLOUD_ROOT = conf['MVOL_OWNCLOUD_ROOT']
-        self.MVOL_OWNCLOUD_USER = conf['MVOL_OWNCLOUD_USER']
-        self.MVOL_OWNCLOUD_SUBPATH = conf['MVOL_OWNCLOUD_SUBPATH']
+        self.MVOL_ROOT = conf['MVOL_ROOT']
 
     def build_dir_path(self, identifier):
         return join(
-            self.MVOL_OWNCLOUD_ROOT,
-            "data",
-            self.MVOL_OWNCLOUD_USER,
-            "files",
-            self.MVOL_OWNCLOUD_SUBPATH,
+            self.MVOL_ROOT,
             "mvol",
             identifier.split("-")[1],
             identifier.split("-")[2],

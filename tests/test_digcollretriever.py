@@ -18,9 +18,8 @@ class Tests(unittest.TestCase):
     def setUp(self):
         self.app = digcollretriever.app.test_client()
         digcollretriever.blueprint.BLUEPRINT.config = {
-            "MVOL_OWNCLOUD_ROOT": join(getcwd(), "sandbox", "mock_oc_root"),
-            "MVOL_OWNCLOUD_USER": "ldr_oc_admin",
-            "MVOL_OWNCLOUD_SUBPATH": "Preservation Unit",
+            "MVOL_ROOT": join(getcwd(), "sandbox", "mock_oc_root", "data", "ldr_oc_admin",
+                              "files", "Preservation Unit"),
             "DEBUG": True
         }
 
