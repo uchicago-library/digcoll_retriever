@@ -123,9 +123,7 @@ Returns the DC metadata
 * DIGCOLLRETRIEVER_VERBOSITY: Controls the logging verbosity
 
 ## MVOL Owncloud Implementation Required Env Vars
-* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_ROOT: The root path for the owncloud installation holding the mvols
-* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_USER: The username of the owncloud account which holds the publication shares for the files
-* DIGCOLLRETRIEVER_MVOL_OWNCLOUD_SUBPATH: Any subpath below the mvol user account which needs to be traversed before hitting the mvol specification file structure
+* DIGCOLLRETRIEVER_MVOL_ROOT: The path to the directory that contains the ```mvol``` dir
 
 ### Developing a New Endpoint
 
