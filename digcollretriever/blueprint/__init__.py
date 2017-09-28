@@ -17,7 +17,7 @@ from .exceptions import Error, Omitted
 
 __author__ = "Brian Balsamo"
 __email__ = "balsamo@uchicago.edu"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 BLUEPRINT = Blueprint('digcollretriever', __name__)
