@@ -142,7 +142,6 @@ get_pdf
 get_jpg
 get_jpg_techmd
 get_limb_ocr
-get_pos_ocr
 get_descriptive_metadata
 ```
 
